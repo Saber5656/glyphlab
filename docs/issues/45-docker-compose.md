@@ -26,8 +26,10 @@ build context is the repo root, so the root file is the one Docker reads) + a `c
      `/webui`.
    - Stage `runtime`: `python:3.12-slim-bookworm` (digest-pinned) →
      `apt-get install -y --no-install-recommends potrace && rm -rf /var/lib/apt/lists/*`;
-     install uv (pinned); `uv sync --locked --no-dev --package glyphlab-service`; copy
-     workspace source; copy webui dist to `/app/webui-dist` (served by the app per §14.1);
+     install uv (pinned); `uv sync --locked --no-dev --package glyphlab-service --extra qa`
+     (or equivalent service-extra wiring that installs `glyphlab[qa]`, including the
+     `fontbakery` executable required by issue 32's hosted builds); copy workspace source;
+     copy webui dist to `/app/webui-dist` (served by the app per §14.1);
      create user `app` (uid 10001); `USER app`; `ENV GLYPHLAB_DATA_DIR=/data
      GLYPHLAB_WEBUI_DIST=/app/webui-dist GLYPHLAB_ENVIRONMENT=prod` (settings fields from
      issue 26 / DESIGN §20); `EXPOSE 8080`; exec-form healthcheck `HEALTHCHECK CMD
@@ -42,8 +44,10 @@ build context is the repo root, so the root file is the one Docker reads) + a `c
    `read_only: true` + `tmpfs: [/tmp]`, `cap_drop: [ALL]`, `security_opt:
    [no-new-privileges:true]`, port 8080, restart unless-stopped, env passthrough with sane
    defaults. Optional commented Postgres block (documented, off by default per ADR-005).
-4. `compose.e2e.yml` override per issue 44 (bind mount `./e2e-data:/data`, short
-   retention env + `GLYPHLAB_SWEEP_INTERVAL_S=5`, fixed `SOURCE_DATE_EPOCH`).
+4. `compose.e2e.yml` override per issue 44 (bind mount `../e2e-data:/data` so repo-root
+   `e2e-data/` is visible to Playwright globalSetup, nonzero normal-retention env +
+   `GLYPHLAB_SWEEP_INTERVAL_S=5`, fixed `SOURCE_DATE_EPOCH`). Retention-expiry tests use a
+   separate override or one-shot env, not this hosted journey override.
 5. `.dockerignore`: everything not needed (docs, tests, .git, webui/node_modules).
 6. CI job `image` in `.github/workflows/ci.yml` (same triggers/permissions as the other
    jobs: `contents: read`): `docker/setup-buildx-action` + `docker/build-push-action`

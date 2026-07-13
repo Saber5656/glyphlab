@@ -28,10 +28,14 @@ template filled by the run.
       packaging gaps.
    b. Compose stack up (issue 45's files with the `compose.e2e.yml` override) → hosted
       journey via the issue-44 Playwright suite.
-   c. Retention (canonical mechanisms only — no DB hooks): the e2e override already sets
-      `GLYPHLAB_RETENTION_DAYS=0` and `GLYPHLAB_SWEEP_INTERVAL_S=5` (both real settings,
-      issue 26); create a throwaway project via the API, wait ≥ 15 s, assert the project
-      404s and its store prefix under the bind-mounted `e2e-data/` is gone.
+   c. Retention (canonical mechanisms only — no DB hooks): do not set
+      `GLYPHLAB_RETENTION_DAYS=0` in the hosted Playwright compose override from 44/45. Run
+      retention as a separate one-shot acceptance step using a dedicated override/env with a
+      very short but nonzero TTL (`GLYPHLAB_RETENTION_DAYS=0.001`, relying on issue 26's
+      fractional-day setting) plus `GLYPHLAB_SWEEP_INTERVAL_S=5`; create a throwaway project
+      via the API, wait long enough for that TTL + one sweep, assert the project 404s and its
+      store prefix under the bind-mounted `e2e-data/` is gone. The normal hosted journey keeps
+      a TTL that cannot expire projects during template download, upload, review, or build.
    d. Security walk: run the issue-38 suite in **container mode**
       (`ABUSE_BASE_URL=http://localhost:8080 uv run pytest packages/service/tests/abuse
       -q` — in-process-only tests self-skip per 38's marker); plus checklist assertions:

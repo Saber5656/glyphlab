@@ -23,9 +23,12 @@ recommended required check names in the workflow file header comment (req 7).
 1. Workflow `ci.yml`, triggers: `pull_request`, `push: branches [main]`,
    `workflow_dispatch`. `permissions: contents: read` (top level).
 2. Job `python` matrix: `os: [ubuntu-latest, macos-latest]`, `python: ["3.11", "3.12"]`.
-   Steps: checkout → `astral-sh/setup-uv` (pin by commit SHA, enable cache) → `uv sync --locked`
-   → `uv run ruff check .` → `uv run ruff format --check .` → `uv run mypy packages/core/src` →
-   `uv run pytest -q --maxfail=5`.
+   Steps: checkout → `actions/setup-python` (SHA-pinned) with
+   `python-version: ${{ matrix.python }}` → `astral-sh/setup-uv` (pin by commit SHA,
+   enable cache) → `UV_PYTHON=${{ matrix.python }} uv sync --locked` → `uv run ruff
+   check .` → `uv run ruff format --check .` → `uv run mypy packages/core/src` → `uv run
+   pytest -q --maxfail=5`. The check log must include `python --version` and `uv python
+   list --only-installed` so the matrix label is tied to the interpreter actually used.
 3. `uv sync --locked` must fail the build on lockfile drift.
 4. System deps step (exact form):
    ```yaml

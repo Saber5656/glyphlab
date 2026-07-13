@@ -27,11 +27,16 @@ those issues.
    - `pip-audit`:
      ```bash
      uv export --locked --no-emit-workspace --format requirements.txt -o /tmp/requirements.txt
-     xargs -a security/pip-audit-ignores.txt -r -I{} echo --ignore-vuln {} | \
-       xargs uvx pip-audit --strict -r /tmp/requirements.txt
+     ignore_args=()
+     while read -r vuln _; do
+       [[ -z "${vuln:-}" || "$vuln" == \#* ]] && continue
+       ignore_args+=(--ignore-vuln "$vuln")
+     done < security/pip-audit-ignores.txt
+     uvx pip-audit --strict -r /tmp/requirements.txt "${ignore_args[@]}"
      ```
      `security/pip-audit-ignores.txt`: one vulnerability ID per line, `#` comments required
-     per entry justifying the ignore; empty initially.
+     per entry justifying the ignore; empty initially. The parser must ignore blank lines and
+     comments so justification text is never passed as vulnerability IDs.
    - `bandit`: `uvx --from 'bandit[toml]' bandit -c pyproject.toml -r packages/core/src
      packages/service/src --severity-level medium`. Root pyproject gets an empty
      `[tool.bandit]` table (zero skips initially; tests are not scanned because only `src`

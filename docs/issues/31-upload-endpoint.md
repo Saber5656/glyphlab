@@ -34,14 +34,21 @@ dep: `python-multipart`.
    - Global storage pressure: `app.state.storage_pressure` (set by issue 36's sweeper;
      False until then) → 507 `E_QUOTA_EXCEEDED` detail `{"limit": "global"}`.
    - Quotas (checked in one transaction, limits from Settings — issue 26 field names):
-     uploads count < `max_uploads_per_project` (`E_QUOTA_EXCEEDED` 409, detail
-     `{"limit": "uploads", "max": N}`); Σ`uploads.bytes` + new ≤
-     `max_project_storage_bytes` → same code, `{"limit": "storage"}`; **queued** jobs for
+     current uploads count < `max_uploads_per_project` (`E_QUOTA_EXCEEDED` 409, detail
+     `{"limit": "uploads", "max": N}`), where "current" means uploads whose original object
+     still exists or whose ingest job is `queued`/`running`; terminal historical rows whose
+     original bytes were purged do not count. Live store usage for non-deleted upload objects
+     plus the new bytes ≤ `max_project_storage_bytes` → same code, `{"limit": "storage"}`.
+     Historical `uploads.bytes` rows whose objects were already deleted by the worker/sweeper
+     do not count toward the storage cap. **queued** jobs for
      the project < `max_queued_jobs_per_project` (§14.3 — queued only, running excluded)
      → `E_RATE_LIMITED` 429.
-   - Persist: sha256 while streaming; duplicate sha256 for the project → **200** with the
-     existing ids: `{upload_id, job_id, deduplicated: true}` (§15 documents 200 and 202
-     variants; OpenAPI declares both).
+   - Persist: sha256 while streaming; duplicate sha256 for the project with an active ingest
+     job (`queued` or `running`) → **200** with the existing ids:
+     `{upload_id, job_id, deduplicated: true}` (§15 documents 200 and 202 variants; OpenAPI
+     declares both). If the matching upload's job is terminal (`succeeded`, `failed`,
+     `canceled`) or the user has since rejected glyphs and re-uploads the same photo, create
+     a fresh upload/job so retry and §8.3 re-ingest paths can run again.
    - Store bytes via issue 28's `StoreKey(project_id, "uploads", name=<upload_id hex>)`;
      insert `uploads` row (status `received`) + `jobs` row (type `ingest`, payload
      `{"upload_id": ...}`, status `queued`) atomically; **202** response

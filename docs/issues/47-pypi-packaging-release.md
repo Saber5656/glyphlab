@@ -34,15 +34,23 @@ actual first publish (human decision).
    metadata** (METADATA, entry_points.txt with the `glyphlab` script, licenses/LICENSE) —
    and nothing else (no tests, no service, no corpus fonts); `pip install dist/*.whl &&
    glyphlab --version` works in a clean venv (tox-free subprocess test).
-3. `release.yml`: trigger `push: tags: ["v*"]`;
+3. `release.yml`: triggers `push: tags: ["v*"]` and `workflow_dispatch` with boolean input
+   `dry_run` (default `true`) plus optional `version` input so branch dry-runs can execute
+   before a tag exists; manual `workflow_dispatch` is dry-run only, and publish jobs are
+   additionally guarded with `github.event_name == 'push' &&
+   startsWith(github.ref, 'refs/tags/v')`;
    jobs: `check-tag` (runs `scripts/check_tag_version.sh` — asserts `${TAG#v}` is a valid
-   PEP 440 version via `packaging.version.Version` AND equals `glyphlab.__version__`;
+   PEP 440 version via `packaging.version.Version` AND equals `glyphlab.__version__`; for
+   `workflow_dispatch` dry-runs, uses the `version` input or current `glyphlab.__version__`
+   instead of `${TAG#v}`;
    prereleases like `v0.0.1a0` are therefore valid) → `build` (`uv build --locked`,
    upload dist artifact) → `test-install` (matrix 3.11/3.12, install wheel, run
-   `glyphlab charset list`) → `publish-testpypi` (environment `testpypi`,
+   `glyphlab charset list`) → `publish-testpypi` (skipped unless the event is a `v*` tag push
+   and `dry_run` is not true; environment `testpypi`,
    `pypa/gh-action-pypi-publish` SHA-pinned, `repository-url` TestPyPI, Trusted
    Publishing via `permissions: id-token: write` on that job only) → `publish-pypi`
-   gated on **environment `pypi` with required reviewers** (human approval click = the
+   (skipped unless the event is a `v*` tag push and `dry_run` is not true) gated on
+   **environment `pypi` with required reviewers** (human approval click = the
    release gate; builds happen only in CI per §17.3 T10). The whole workflow passes
    `scripts/check_workflow_hygiene.sh` (issue 02): every action SHA-pinned, minimal
    per-job permissions, no `secrets.` references (OIDC only).

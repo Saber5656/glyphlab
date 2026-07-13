@@ -23,10 +23,12 @@ Adds service deps: `fastapi`, `uvicorn`, `pydantic-settings`.
 1. `settings.py`: `Settings(BaseSettings)` with `env_prefix="GLYPHLAB_"`: `data_dir: Path =
    "/data"`, `database_url: str = ""` (empty → sqlite at `{data_dir}/glyphlab.db`),
    `object_store: Literal["local","s3"] = "local"`, S3 fields (endpoint, bucket, region,
-   access key id — secret via env only), `retention_days: int = 14`, `public_base_url: str
+   access key id — secret via env only), `retention_days: float = 14.0` (must be `> 0`;
+   fractional days are allowed for retention tests), `public_base_url: str
    = ""`, `environment: Literal["dev","prod"] = "prod"`, and the exact limit/knob fields
    consumed by later issues (all env-overridable):
-   `trust_proxy_headers: bool` (default = environment == "prod"),
+   `trust_proxy_headers: bool = False` (Fly deployment enables it explicitly; prod-mode
+   self-host does not trust proxy headers by default),
    `cors_dev_origin: str = "http://localhost:5173"`,
    `max_upload_bytes: int = 12 * 2**20`, `max_upload_request_bytes: int = 13 * 2**20`,
    `max_json_body_bytes: int = 65536`, `max_uploads_per_project: int = 40`,

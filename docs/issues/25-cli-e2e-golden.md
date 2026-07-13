@@ -40,8 +40,11 @@ issue and document).
       within §11.2 bounds; OS/2/head per §10.3; fontbakery gate passed (allowlist
       justified if calibrated). proof.html: exists, contains coverage numbers, passes the
       issue-18 self-containment assertions (CSP meta present, no non-data URIs).
-   f. Repeat ingest+build with `phone-tilt` corpus into the same project (re-ingest path) —
-      accepted glyphs skipped (§8.3), build still green.
+   f. Create a second fresh project and repeat copy→ingest→coverage assertions→accept→build
+      with the `phone-tilt` corpus before any glyphs are accepted in that project. This must
+      exercise the tilted vectorization/build path rather than only the accepted-glyph skip.
+   g. Separately, re-ingest `phone-tilt` into the first already-accepted project to cover the
+      §8.3 skip path; accepted glyphs are skipped and the build still stays green.
 2. Performance recording: wall-time measured test-side (`time.perf_counter` around each
    CLI invocation, divided by page count for per-page ingest) and asserted against §21
    budgets ×1.5 slack on CI (page ingest ≤ 22.5 s, build ≤ 15 s); marked `slow` (runs in

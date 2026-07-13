@@ -38,7 +38,8 @@ deployment.
    - `[[vm]]` shared-cpu-1x, **1024 MB** (§21 ceiling: ≤ 800 MiB total RSS with one job
      child; runbook covers resize).
    - `[env]`: `GLYPHLAB_ENVIRONMENT=prod`, `GLYPHLAB_OBJECT_STORE=local`,
-     `GLYPHLAB_RETENTION_DAYS=14`.
+     `GLYPHLAB_RETENTION_DAYS=14`, `GLYPHLAB_TRUST_PROXY_HEADERS=true` (Fly overwrites the
+     trusted client-IP headers; Docker self-host leaves this unset/False).
 2. `RUNBOOK.md` sections (each step exact commands; human-only steps tagged **[HUMAN]**):
    - Prerequisites: flyctl install, **[HUMAN]** account + payment.
    - First deploy: `fly launch --no-deploy --copy-config`, **[HUMAN]** app rename/region,

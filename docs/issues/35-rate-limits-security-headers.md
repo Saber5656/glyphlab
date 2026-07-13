@@ -23,12 +23,14 @@ service dep: `slowapi`.
 
 1. Client IP resolution (`limits.py::client_ip(request) -> str`), security-sensitive and
    exactly specified: when `settings.trust_proxy_headers` (issue 26 field; default =
-   prod) is False → always the socket peer. When True: use `Fly-Client-IP` if present and
-   a valid IP literal; else if `X-Forwarded-For` present take its **last** entry (the hop
-   appended by the trusted platform proxy — earlier entries are client-forgeable); else
-   socket peer. Invalid/unparseable values → socket peer. Deployment assumption documented
-   in the module docstring: trust_proxy_headers=True is only safe behind a proxy that
-   overwrites these headers (Fly does — research/03).
+   **False**, including Docker self-host and local prod-mode compose) is False → always the
+   socket peer. When True: use `Fly-Client-IP` if present and a valid IP literal; else if
+   `X-Forwarded-For` present take its **last** entry (the hop appended by the trusted
+   platform proxy — earlier entries are client-forgeable); else socket peer.
+   Invalid/unparseable values → socket peer. Deployment assumption documented in the module
+   docstring: `trust_proxy_headers=True` is only safe behind a proxy that overwrites these
+   headers (Fly does — research/03), so issue 46's Fly config explicitly enables it while
+   issue 45's self-host compose leaves it unset/False.
 2. slowapi limiter with in-memory storage (single instance per ADR-005; note in code that
    D7 multi-instance needs a shared store):
    - `POST /api/projects`: `3/minute` and `10/day` per IP.

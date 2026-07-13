@@ -43,7 +43,7 @@ seeding + tests.
    build); template_id minted (template artifact lazily built by 30). Response 201,
    exactly: `{"project_id": uuid, "token": "glp_…", "name": str, "family_name": str,
    "charset": {"id": str, "version": int, "encoded": int, "drawn": int},
-   "template_pages": int (from compute_layout), "retention_days": int,
+   "template_pages": int (from compute_layout), "retention_days": number,
    "expires_at": iso8601}`.
 4. `GET /api/projects/{id}` → 200, exactly: `{"project_id", "name", "family_name",
    "charset": {as above}, "counts": {"missing": int, "auto": int, "accepted": int,

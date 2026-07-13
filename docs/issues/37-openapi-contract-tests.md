@@ -50,8 +50,9 @@ Spec export script + CI wiring + schemathesis test module. Adds dev dep: `schema
    substitutes these known-good ids for path parameters (while ALSO letting schemathesis
    fuzz them raw in a second unauthenticated pass). Profile `max_examples=50` per
    operation in PR CI. Checks: no 5xx ever; responses validate against the spec;
-   tokenless calls on secured operations → 404/422, never 2xx. Exclusions: artifact
-   binary downloads checked for status codes only.
+   missing, malformed, wrong-token, wrong-id, expired, and otherwise tokenless calls on secured
+   operations → the uniform issue-29 404 body, never 2xx and never FastAPI validation 422.
+   Exclusions: artifact binary downloads checked for status codes only.
 5. Spec hygiene assertions (unit): every path starts `/api/` (except `/healthz`); every
    operation has `operationId`; no endpoint exposes `token` in a URL parameter; ErrorResponse
    referenced by ≥ 90% of operations.

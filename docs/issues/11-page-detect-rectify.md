@@ -27,7 +27,9 @@ error.
 2. Detection ladder per §8.2 S2 (stop at first success, record attempt count):
    a. `ArucoDetector(DICT_4X4_50, DetectorParameters())` on the input.
    b. CLAHE contrast enhancement (`clipLimit=3, tileGridSize=8×8`) then detect.
-   c. 1.5× upscale (if longest side < 3000 px) then detect.
+   c. 1.5× upscale (if longest side < 3000 px) then detect; if this attempt succeeds, record
+      `detection_scale=1.5` and divide all returned marker corner coordinates by 1.5 before
+      they are used as source points against the original image.
    After the ladder: group detected IDs by page (`id // 4`). Ambiguity rule per §8.2 S3:
    ≥ 2 page groups with ≥ 2 markers each → `E_PAGE_AMBIGUOUS` (two sheets in frame); a
    single stray marker from another page is recorded in diagnostics and ignored. The
@@ -38,7 +40,9 @@ error.
    marker, ArUco returns its 4 corners in order (marker-TL, marker-TR, marker-BR,
    marker-BL) — map each to the same-ordered corner of that marker's rect from the sidecar,
    converted to canonical px. Estimate with `cv2.findHomography(src16, dst16, method=0)`
-   (least squares over ID-validated points — no RANSAC, no RNG, fully deterministic) → warp
+   (least squares over ID-validated points — no RANSAC, no RNG, fully deterministic). Source
+   points are always in the coordinate system of the original `img`; fallback-upscale detections
+   are scaled back first. Warp
    with `cv2.warpPerspective(img, H, dsize=(2481, 3508))` (dsize is (width, height); the
    resulting ndarray shape is `(3508, 2481)` = (rows, cols)), white border fill.
 5. Quality gates (§8.2 S4):

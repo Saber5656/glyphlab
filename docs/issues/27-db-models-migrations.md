@@ -22,7 +22,10 @@ because self-host defaults to SQLite while growth path is Postgres (ADR-005).
 script (`[project.scripts]` in service pyproject → runs `alembic upgrade head` with
 settings-derived URL; issue 45's entrypoint depends on it) + a `services-db` CI job +
 tests. Adds service deps: `sqlalchemy`, `alembic` (+ `psycopg[binary]` as extra
-`glyphlab-service[postgres]`).
+`glyphlab-service[postgres]`). The `services-db` CI job must sync/install the
+`glyphlab-service[postgres]` extra before setting `TEST_POSTGRES_URL=postgresql+psycopg://...`;
+the Postgres half of the suite must not depend on a driver already present from the developer
+environment.
 
 # Detailed Requirements
 

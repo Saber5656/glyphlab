@@ -22,8 +22,10 @@ at test setup.
 # Detailed Requirements
 
 1. Setup: `docker compose -f deploy/docker-compose.yml -f deploy/compose.e2e.yml up`
-   (e2e override: **bind mount `./e2e-data:/data`** instead of the named volume, short
-   retention + `GLYPHLAB_SWEEP_INTERVAL_S=5`, deterministic `SOURCE_DATE_EPOCH`); wait on
+   (e2e override: **bind mount `../e2e-data:/data`** from `deploy/compose.e2e.yml`, because
+   Docker Compose resolves relative paths against the first compose file's directory; this
+   maps to repo-root `e2e-data/` and replaces the named volume, with normal nonzero
+   retention, `GLYPHLAB_SWEEP_INTERVAL_S=5`, deterministic `SOURCE_DATE_EPOCH`); wait on
    `/healthz`. Corpus generation in Playwright's globalSetup (Python helper, available in
    CI): after creating the project and downloading template.pdf through the API, read the
    sidecar JSON **from the bind-mounted store** (`e2e-data/store/projects/<id>/artifacts/`

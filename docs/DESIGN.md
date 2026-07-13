@@ -690,7 +690,7 @@ Error envelope (all non-2xx): `{"error": {"code": "E_…", "message": "…", "de
 | `GET /projects/{id}` | → `{name, family_name, charset, counts{missing,auto,accepted,rejected}, expires_at}` | |
 | `DELETE /projects/{id}` | → `204` | Immediate purge. |
 | `GET /projects/{id}/template.pdf` | → `application/pdf` | Generated once, cached as artifact. |
-| `POST /projects/{id}/uploads` | multipart `file` → `202 {upload_id, job_id, deduplicated: false}`; same-content re-upload → `200 {upload_id, job_id, deduplicated: true}` (existing ids) | Validations §17.4; enqueues ingest job. |
+| `POST /projects/{id}/uploads` | multipart `file` → `202 {upload_id, job_id, deduplicated: false}`; same-content re-upload while the matching ingest job is still queued/running → `200 {upload_id, job_id, deduplicated: true}` (existing ids); terminal-job re-upload creates a fresh upload/job | Validations §17.4; enqueues ingest job unless active-job dedup applies. |
 | `GET /projects/{id}/jobs/{job_id}` | → `{status, error_code?, result?}` | UI polls ≤ 1 Hz. |
 | `GET /projects/{id}/glyphs?status=&warning=` | → `{glyphs: [{codepoint, char, status, advance, warnings, svg_url?, updated_at}], next_cursor?}` | Paged (limit ≤ 300, cursor = last codepoint). |
 | `GET /projects/{id}/glyphs/{cp}.svg` | → `image/svg+xml` | Served with `Content-Type` + `nosniff` + restrictive CSP header; SVGs are generator-produced (§9.4). |
