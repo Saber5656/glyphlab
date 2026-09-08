@@ -26,10 +26,13 @@ def run_structural_checks(
             if set(cmap) != expected.codepoints:
                 fail("cmap", "Character map differs from the selected charset coverage")
             subtables = font["cmap"].tables
+            bmp = {cp: name for cp, name in cmap.items() if cp <= 0xFFFF}
             if not {4, 12}.issubset({t.format for t in subtables}) or any(
-                t.cmap != cmap for t in subtables if t.format in (4, 12)
+                t.cmap != (bmp if t.format == 4 else cmap) for t in subtables if t.format in (4, 12)
             ):
-                fail("cmap", "Required format 4 and 12 tables must agree")
+                fail(
+                    "cmap", "Format 4 must cover BMP and format 12 must cover all selected scalars"
+                )
             definitions = {c.codepoint: c for c in charset.chars}
             for cp, name in cmap.items():
                 advance = font["hmtx"][name][0]

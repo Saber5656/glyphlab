@@ -974,4 +974,5 @@ conflict without changing fitting or disabling clipping checks.
 
 Format 4 and format 12 cmap tables remain mandatory even for ASCII-only fonts.
 Font Bakery's `cmap/format_12` recommendation against a redundant table is
-allowlisted; independent structural QA requires both tables and equal mappings.
+allowlisted; independent structural QA requires format 4 to cover selected BMP codepoints and
+format 12 to cover all selected Unicode scalars (including supplementary planes).

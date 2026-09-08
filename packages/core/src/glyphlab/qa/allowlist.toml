@@ -14,4 +14,4 @@ reason = "v1 explicitly produces unhinted fonts (NG9); TrueType smart-dropout in
 
 [[allow]]
 check = "cmap/format_12"
-reason = "DESIGN 10.2 requires both cmap 4 and 12 even for ASCII-only fonts. The extra table is intentional; mandatory structural QA verifies both tables exist and have identical coverage, so absent or inconsistent mappings remain failures."
+reason = "DESIGN 10.2 requires both cmap 4 and 12 even for ASCII-only fonts. The extra table is intentional; mandatory structural QA verifies both tables exist and cover BMP and all scalars respectively, so absent or inconsistent mappings remain failures."

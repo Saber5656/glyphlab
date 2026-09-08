@@ -58,3 +58,18 @@ def test_format_12_must_match_coverage(golden_font, golden_inputs):
         f.check_id == "structural/cmap"
         for f in run_structural_checks(golden_font.ttf_path, charset, expected_for(charset, glyphs))
     )
+
+
+def test_supplementary_custom_codepoint_uses_format_12(golden_inputs, tmp_path):
+    from glyphlab.charset.model import CharDef, CharsetSpec
+    from glyphlab.fontbuild.builder import build_font
+
+    config, glyphs, _ = golden_inputs
+    charset = CharsetSpec(
+        "supplementary", 1, (CharDef(32, "latin", False), CharDef(0x1F600, "latin", True))
+    )
+    result = build_font(config, {0x1F600: glyphs[65]}, charset, tmp_path)
+    findings = run_structural_checks(
+        result.ttf_path, charset, ExpectedBuild({32, 0x1F600}, {32: 500, 0x1F600: 600})
+    )
+    assert findings == []
