@@ -126,6 +126,7 @@ export function useUploadQueue(projectId: string) {
     });
     const items = queue.data;
     const [queueFull, setQueueFull] = useState(false);
+    const fullAtPending = useRef<number>();
     const current = useRef<{ id: string; controller: AbortController }>();
     const mounted = useRef(true);
     const validating = useRef(0);
@@ -232,6 +233,19 @@ export function useUploadQueue(projectId: string) {
     }, [items, active, projectId, change]);
     const busy = items.some(pending);
     useEffect(() => {
+        // Keep an oversized-batch warning even if the queue was empty when rejected.
+        // Dismiss it only when previously occupied capacity has actually been released.
+        const occupied = items.filter(pending).length + validating.current;
+        if (
+            queueFull &&
+            fullAtPending.current !== undefined &&
+            occupied < fullAtPending.current
+        ) {
+            setQueueFull(false);
+            fullAtPending.current = undefined;
+        }
+    }, [items, queueFull]);
+    useEffect(() => {
         if (!busy) return;
         const before = (event: BeforeUnloadEvent) => {
             event.preventDefault();
@@ -242,15 +256,19 @@ export function useUploadQueue(projectId: string) {
     }, [busy]);
     async function addFiles(files: FileList | File[]) {
         const incoming = Array.from(files);
+        if (!incoming.length) return;
         const old = client.getQueryData<UploadItem[]>(key) ?? [];
         if (
             old.filter(pending).length + validating.current + incoming.length >
             6
         ) {
+            fullAtPending.current =
+                old.filter(pending).length + validating.current;
             setQueueFull(true);
             return;
         }
         setQueueFull(false);
+        fullAtPending.current = undefined;
         validating.current += incoming.length;
         const next = await Promise.all(
             incoming.map(async (file) => {
@@ -272,12 +290,18 @@ export function useUploadQueue(projectId: string) {
         const item = old.find((candidate) => candidate.id === id);
         if (!item || item.state !== "error") return;
         if (old.filter(pending).length + validating.current >= 6) {
+            fullAtPending.current =
+                old.filter(pending).length + validating.current;
             setQueueFull(true);
             return;
         }
         validating.current++;
         const error = await validateImage(item.file);
         validating.current--;
+        if (mounted.current && !error) {
+            setQueueFull(false);
+            fullAtPending.current = undefined;
+        }
         if (mounted.current)
             change(id, {
                 state: error ? "error" : "waiting",

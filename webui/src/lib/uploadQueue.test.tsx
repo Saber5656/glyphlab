@@ -177,3 +177,45 @@ it("recovers a failed poll without re-uploading the file", async () => {
     );
     expect(upload).toHaveBeenCalledOnce();
 });
+
+it("clears a full-queue warning only after pending capacity is actually freed", async () => {
+    let finish!: (value: unknown) => void;
+    upload
+        .mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        )
+        .mockImplementation(() => new Promise(() => undefined));
+    server.use(
+        http.get("http://localhost/api/projects/p/jobs/completed", () =>
+            HttpResponse.json({ status: "succeeded", result }),
+        ),
+    );
+    const view = mount();
+    await act(() =>
+        view.result.current.addFiles(Array.from({ length: 6 }, () => file())),
+    );
+    await waitFor(() => expect(upload).toHaveBeenCalledOnce());
+    await act(() => view.result.current.addFiles([file("seventh.jpg")]));
+    expect(view.result.current.queueFull).toBe(true);
+    await act(async () => finish({ job_id: "completed" }));
+    await waitFor(() =>
+        expect(view.result.current.items[0].state).toBe("done"),
+    );
+    await waitFor(() => expect(view.result.current.queueFull).toBe(false));
+});
+it("keeps a rejected seven-file batch visible on an empty queue until a valid add", async () => {
+    const view = mount();
+    await act(() =>
+        view.result.current.addFiles(Array.from({ length: 7 }, () => file())),
+    );
+    expect(view.result.current.queueFull).toBe(true);
+    expect(view.result.current.items).toHaveLength(0);
+    view.rerender();
+    expect(view.result.current.queueFull).toBe(true);
+    upload.mockImplementation(() => new Promise(() => undefined));
+    await act(() => view.result.current.addFiles([file()]));
+    await waitFor(() => expect(view.result.current.queueFull).toBe(false));
+});
