@@ -11,6 +11,7 @@ from glyphlab.cli.render import cli_guard, success
 from glyphlab.errors import GlyphlabError
 from glyphlab.project.config import ProjectConfig
 from glyphlab.project.store import ProjectStore
+from glyphlab.template.layout import compute_layout
 
 
 @cli_guard
@@ -33,10 +34,10 @@ def new(
     config = ProjectConfig.model_validate(
         {"project": {"name": name, "family_name": family, "charset": charset}}
     )
+    pages = len(compute_layout(spec).pages)
     ProjectStore(root).init(config)
-    drawn = sum(c.drawn for c in spec.chars)
     success(
-        {"root": str(root), "charset": spec.charset_id, "pages": (drawn + 48) // 49},
+        {"root": str(root), "charset": spec.charset_id, "pages": pages},
         f"Created {root}\nNext: glyphlab --project {root} template → write → ingest → build",
     )
 

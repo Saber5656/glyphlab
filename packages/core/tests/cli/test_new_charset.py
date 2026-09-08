@@ -25,3 +25,10 @@ def test_charsets():
     result = runner.invoke(app, ["--json", "charset", "list"])
     rows = json.loads(result.stdout)["data"]
     assert next(r for r in rows if r["id"] == "ja-basic-v1")["pages"] == 6
+
+
+def test_show_reports_script_counts():
+    result = runner.invoke(app, ["--json", "charset", "show", "ja-basic-v1"])
+    counts = json.loads(result.stdout)["data"]["scripts"]
+    assert counts["latin"] == 95
+    assert sum(counts.values()) == 278

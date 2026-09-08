@@ -1,11 +1,13 @@
 """Inspect the immutable preset or custom charset contract."""
 
+from collections import Counter
 from pathlib import Path
 
 import typer
 
 from glyphlab.cli.context import resolve_charset
 from glyphlab.cli.render import cli_guard, success
+from glyphlab.template.layout import compute_layout
 
 
 @cli_guard
@@ -20,7 +22,7 @@ def list_charsets() -> None:
                 "version": spec.version,
                 "encoded": len(spec.chars),
                 "drawn": drawn,
-                "pages": (drawn + 48) // 49,
+                "pages": len(compute_layout(spec).pages),
             }
         )
     success(
@@ -48,14 +50,17 @@ def show_charset(identifier: str, codepoints: bool = False) -> None:
         "version": spec.version,
         "encoded": len(chars),
         "drawn": drawn,
-        "pages": (drawn + 48) // 49,
+        "pages": len(compute_layout(spec).pages),
     }
+    scripts = dict(Counter(c.script_class for c in spec.chars))
+    data["scripts"] = scripts
     if codepoints:
         data["chars"] = chars
     human = (
         f"{spec.charset_id}@{spec.version}: {len(chars)} encoded, "
-        f"{drawn} drawn, {(drawn + 48) // 49} pages"
+        f"{drawn} drawn, {len(compute_layout(spec).pages)} pages"
     )
+    human += "\n" + ", ".join(f"{kind}: {count}" for kind, count in scripts.items())
     if codepoints:
         human += "\n" + "\n".join(
             f"{c['codepoint']} {c['char']} {c['script_class']} "
