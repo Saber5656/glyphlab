@@ -2,6 +2,7 @@ import json
 
 import pytest
 from glyphlab.cli.main import app
+from rich.text import Text
 from typer.testing import CliRunner
 
 runner = CliRunner()
@@ -29,9 +30,14 @@ def test_json(args, ok):
     assert not result.stderr.startswith("{")
 
 
-def test_version_help():
+@pytest.mark.parametrize("force_terminal", [False, True])
+def test_version_help(monkeypatch, force_terminal):
+    monkeypatch.setattr("typer.rich_utils.FORCE_TERMINAL", force_terminal)
+    monkeypatch.setattr("typer.rich_utils.COLOR_SYSTEM", "standard")
     assert "0.1.0" in runner.invoke(app, ["--version"]).output
-    assert "--project" in runner.invoke(app, ["--help"]).output
+    result = runner.invoke(app, ["--help"], color=force_terminal)
+    assert result.exit_code == 0
+    assert "--project" in Text.from_ansi(result.output).plain
 
 
 @pytest.mark.parametrize(
