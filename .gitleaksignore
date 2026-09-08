@@ -1,0 +1,6 @@
+# False positive: ADR-002 line 41 contains ordinary prose about account deletion
+# and GDPR workflows, not a credential. Restrict these exceptions to the two
+# historical findings; future lines, commits, and all real credential rules stay
+# scanned. Reproduced with gitleaks 8.24.3 (the pinned action's bundled version).
+a7589956eb33dc5743dc6242220274cad5f34534:docs/decisions/ADR-002-hosted-service-anonymous-token-projects.md:generic-api-key:41
+349de6cd768498d169a246fc95cb85578bbcc7e3:docs/decisions/ADR-002-hosted-service-anonymous-token-projects.md:generic-api-key:41
