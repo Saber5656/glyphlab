@@ -6,6 +6,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      e2e_failure_probe:
+        description: Verify failure trace artifact collection
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -81,6 +86,10 @@ jobs:
       - run: docker image inspect glyphlab:ci --format '{{.Size}}' | awk '{print "Image bytes:", $1; exit !($1 < 900*1024*1024)}'
       - run: docker compose -f deploy/docker-compose.yml up -d --wait
       - run: bash scripts/smoke_compose.sh
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+      - run: uv sync --locked --all-packages --all-extras
+      - run: docker compose -f deploy/docker-compose.yml restart && docker compose -f deploy/docker-compose.yml up -d --wait
+      - run: ABUSE_BASE_URL=http://localhost:8080 uv run pytest packages/service/tests/abuse -q
       - if: always()
         run: docker compose -f deploy/docker-compose.yml logs && docker compose -f deploy/docker-compose.yml down -v
   e2e:
@@ -123,3 +132,73 @@ jobs:
       - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
       - run: uv sync --locked --all-packages --all-extras
       - run: uv run pytest packages/service/tests/db packages/service/tests/jobs/test_queue.py -q
+  deploy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1
+        with:
+          version: '0.4.100'
+      - run: flyctl config validate --config deploy/fly.toml
+        env:
+          # Local validation does not contact Fly; the CLI requires a nonempty placeholder.
+          FLY_API_TOKEN: local-config-validation-only
+      - run: bash deploy/check_runbook.sh
+  web-e2e:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      E2E_BASE_URL: http://localhost:8080
+      PLAYWRIGHT_BASE_URL: http://localhost:8080
+      E2E_DATA_DIR: ${{ github.workspace }}/e2e-data
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+      - run: uv sync --locked --all-packages --all-extras
+      - run: npm ci && npx playwright install --with-deps chromium webkit
+        working-directory: webui
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: deploy/Dockerfile
+          load: true
+          push: false
+          tags: glyphlab:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - run: |
+          install -d -m 0777 e2e-data
+          docker compose -f deploy/docker-compose.yml -f deploy/compose.e2e.yml up -d --wait
+      - run: npx playwright test
+        working-directory: webui
+      - name: Exercise failure trace collection
+        if: github.event_name == 'workflow_dispatch' && inputs.e2e_failure_probe
+        id: failure-probe
+        continue-on-error: true
+        env:
+          E2E_FAILURE_PROBE: '1'
+        run: npx playwright test --project=chromium --output=test-results-failure-probe
+        working-directory: webui
+      - name: Verify the probe failed as intended
+        if: github.event_name == 'workflow_dispatch' && inputs.e2e_failure_probe
+        env:
+          PROBE_OUTCOME: ${{ steps.failure-probe.outcome }}
+        run: test "$PROBE_OUTCOME" = failure
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: playwright-evidence
+          path: |
+            webui/playwright-report/
+            webui/test-results/
+            webui/test-results-failure-probe/
+          retention-days: 7
+      - if: always()
+        run: docker compose -f deploy/docker-compose.yml -f deploy/compose.e2e.yml logs && docker compose -f deploy/docker-compose.yml -f deploy/compose.e2e.yml down -v
