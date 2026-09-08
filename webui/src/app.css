@@ -68,3 +68,8 @@ footer { padding: 44px 0 0; color: #5e765f; font-size: .85rem; }
 .prose { max-width: 720px; margin: 45px auto; line-height: 1.9; }.prose h2 { margin-top: 32px; }.prose p { color: #4c5a50; }
 .modal-backdrop { position: fixed; inset: 0; display: grid; place-items: center; padding: 20px; background: #17211b99; z-index: 5; }.modal { width: min(570px, 100%); background: #fff; border-radius: 20px; padding: 30px; box-shadow: 0 20px 70px #17211b55; }.modal h2 { line-height: 1.5; }.modal .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
 @media (max-width: 680px) { .columns { grid-template-columns: 1fr; }.topbar nav { gap: 8px; font-size: .75rem; }.shell { width: min(100% - 28px, 1120px); padding-top: 35px; }.page-heading { align-items: start; flex-direction: column; }.upload-item { align-items: start; flex-direction: column; gap: 12px; }.result { justify-content: start; }.modal .actions .button { width: 100%; } }
+.glyph-item { position: relative; min-width: 0; }
+.glyph-item .glyph-cell { width: 100%; }
+.glyph-select { position: absolute; left: 4px; top: 4px; }
+.review-actions, .review-footer { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+.review-footer { justify-content: space-between; }
