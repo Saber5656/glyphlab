@@ -54,7 +54,8 @@ Exit 0 means success; 1 unexpected failure; 2 command usage; 3 invalid input or 
 stdout has one envelope: `{ "ok": true, "data": ... }` or
 `{ "ok": false, "error": { "code": ..., "message": ..., "detail": ... } }`.
 A mixed ingest run reports every page and returns exit 3 if any page failed; successful
-pages remain saved. Font QA failure keeps diagnostics and proof files locally.
+pages remain saved. In JSON mode it returns `ok: false` with partial page results, per-file
+errors and coverage in `error.detail`. Parser/usage failures also produce a JSON envelope. Font QA failure keeps diagnostics and proof files locally.
 
 The mandatory structural gate checks coverage, advances, bounds and font tables. The
 universal Font Bakery gate is enabled by default. Its narrowly justified exceptions

@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 from corpus.generate import generate_corpus
@@ -24,10 +25,14 @@ def test_incremental_and_mixed_failure(tmp_path):
         42,
         root / "scans",
     )
+    shutil.rmtree(root / "work")  # Disposable caches must be reconstructed.
     (root / "scans/bad.jpg").write_bytes(b"not an image")
     result = runner.invoke(app, [*base, "ingest"])
     assert result.exit_code == 3, result.output
-    data = json.loads(result.stdout)["data"]
+    envelope = json.loads(result.stdout)
+    assert envelope["ok"] is False
+    assert envelope["error"]["code"] == "E_VALIDATION"
+    data = envelope["error"]["detail"]
     assert len(data["pages"]) == 1
     assert data["errors"][0]["file"] == "bad.jpg"
     assert data["coverage"]["have"] == 48

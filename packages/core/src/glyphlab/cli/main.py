@@ -7,10 +7,11 @@ import typer
 
 from glyphlab import __version__
 from glyphlab.cli.context import CliContext, bind
+from glyphlab.cli.group import JsonGroup
 from glyphlab.cli.render import cli_guard, success
 from glyphlab.errors import ERROR_REGISTRY, GlyphlabError
 
-app = typer.Typer(no_args_is_help=True, add_completion=True)
+app = typer.Typer(no_args_is_help=True, add_completion=True, cls=JsonGroup)
 
 
 @app.callback(invoke_without_command=True)

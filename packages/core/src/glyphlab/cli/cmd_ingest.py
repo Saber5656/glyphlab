@@ -40,6 +40,7 @@ def ingest(
             "E_VALIDATION", "No input files; put JPEG, PNG, or HEIC scans in scans/"
         )
     index_path = store.root / "work/ingest-index.json"
+    index_path.parent.mkdir(parents=True, exist_ok=True)
     index = json.loads(index_path.read_text()) if index_path.exists() else {}
     results = []
     failures = []
@@ -73,8 +74,16 @@ def ingest(
     saved = store.read_status()
     coverage = sum(e["status"] != "missing" for e in saved.values())
     drawn = sum(c.drawn for c in charset.chars)
+    data = {"pages": results, "errors": failures, "coverage": {"have": coverage, "total": drawn}}
+    if failures:
+        if not current().json_mode:
+            typer.echo(
+                "\n".join(f"{r['file']} | page {r['page_index']} | {r['counts']}" for r in results)
+            )
+            typer.echo(f"coverage: {coverage}/{drawn} drawn glyphs have sources")
+        raise GlyphlabError("E_VALIDATION", "One or more input pages failed", detail=data)
     success(
-        {"pages": results, "errors": failures, "coverage": {"have": coverage, "total": drawn}},
+        data,
         (
             "nothing new\n"
             if not results and not failures
@@ -83,8 +92,6 @@ def ingest(
         )
         + f"coverage: {coverage}/{drawn} drawn glyphs have sources",
     )
-    if failures:
-        raise typer.Exit(3)
 
 
 def register(app: typer.Typer) -> None:

@@ -920,7 +920,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.13" },
     { name = "reportlab", specifier = ">=5.0" },
     { name = "skia-pathops", specifier = ">=0.9" },
-    { name = "typer", specifier = ">=0.26" },
+    { name = "typer", specifier = ">=0.27" },
 ]
 provides-extras = ["trace", "qa"]
 

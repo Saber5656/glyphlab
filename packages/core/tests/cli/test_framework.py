@@ -32,3 +32,13 @@ def test_json(args, ok):
 def test_version_help():
     assert "0.1.0" in runner.invoke(app, ["--version"]).output
     assert "--project" in runner.invoke(app, ["--help"]).output
+
+
+@pytest.mark.parametrize(
+    "args", [["--unknown"], ["status", "--unknown"], ["new"], ["does-not-exist"]]
+)
+def test_parser_failures_have_json_envelope(args):
+    result = runner.invoke(app, ["--json", *args])
+    assert result.exit_code == 2
+    data = json.loads(result.stdout)
+    assert data["ok"] is False and data["error"]["code"] == "E_USAGE"

@@ -20,7 +20,7 @@ dependencies = [
     "pydantic>=2.13",
     "reportlab>=5.0",
     "skia-pathops>=0.9",
-    "typer>=0.26",
+    "typer>=0.27",
 ]
 
 [project.optional-dependencies]
