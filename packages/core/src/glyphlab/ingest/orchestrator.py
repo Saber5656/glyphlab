@@ -74,7 +74,7 @@ def ingest_scan(
     page = detect_and_rectify(decode_scan(data), sidecar)
     chars = {char.codepoint: char for char in charset.chars}
     outcomes = []
-    for geom, crop in slice_cells(page, sidecar):
+    for geom, crop in slice_cells(page, sidecar, charset):
         cell = binarize_cell(crop, geom)
         cp = f"U+{geom.codepoint:04X}"
         warnings = [str(w) for w in cell.warnings]

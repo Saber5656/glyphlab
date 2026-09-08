@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
+from glyphlab.charset import CharsetSpec, ScriptClass
 from glyphlab.model import GlyphWarning
 from glyphlab.template.layout import GuideGeometry, cell_box_px, guide_lines_px
 from glyphlab.template.sidecar import TemplateSidecar
@@ -16,7 +17,7 @@ from .rectify import RectifiedPage
 @dataclass(frozen=True)
 class CellGeometry:
     codepoint: int
-    script_class: str
+    script_class: ScriptClass
     cell_ref: tuple[int, int, int]
     box_px: tuple[int, int, int, int]
     guides: GuideGeometry
@@ -36,15 +37,15 @@ class CellBitmap:
 
 
 def slice_cells(
-    page: RectifiedPage, sidecar: TemplateSidecar
+    page: RectifiedPage, sidecar: TemplateSidecar, charset: CharsetSpec | None = None
 ) -> Iterator[tuple[CellGeometry, np.ndarray]]:
     layout = next(p for p in sidecar.pages if p.index == page.page_index)
     for cell in layout.cells:
         if cell.codepoint is None:
             continue
         cp = cell.codepoint
-        # Custom charsets obey the same script-class rule as the charset module.
-        script = (
+        # Preset defaults support direct slicing; project definitions override them.
+        script: ScriptClass = (
             "latin"
             if cp < 128
             else (
@@ -53,6 +54,9 @@ def slice_cells(
                 else "punct_ja"
             )
         )
+        char = charset.get(cp) if charset is not None else None
+        if char is not None:
+            script = char.script_class
         box = cell_box_px(layout, cell.row, cell.col)
         x0, y0, x1, y1 = box
         geom = CellGeometry(
