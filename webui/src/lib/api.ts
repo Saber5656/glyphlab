@@ -1,7 +1,7 @@
 import { clearToken, getToken } from "./token";
 export type ApiErrorShape = { code: string; message: string; detail?: Record<string, unknown> };
 export class ApiError extends Error {
-  constructor(readonly code: string, message: string, readonly status: number, readonly detail?: Record<string, unknown>) {
+  constructor(readonly code: string, message: string, readonly status: number, readonly detail?: Record<string, unknown>, readonly retryAfter?: number) {
     super(message); this.name = "ApiError";
   }
 }
@@ -13,15 +13,22 @@ function headersFor(projectId?: string): Headers {
   if (token) headers.set("Authorization", `Bearer ${token}`);
   return headers;
 }
-function envelopeError(payload: unknown, status: number): ApiError {
+function retryAfter(value: string | null): number | undefined {
+  if (value === null) return;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds;
+  const date = Date.parse(value);
+  return Number.isFinite(date) ? Math.max(0, Math.ceil((date - Date.now()) / 1000)) : undefined;
+}
+function envelopeError(payload: unknown, status: number, retry?: number): ApiError {
   if (payload && typeof payload === "object" && "error" in payload) {
     const error = payload.error;
     if (error && typeof error === "object" && "code" in error && typeof error.code === "string" && "message" in error && typeof error.message === "string") {
       const detail = "detail" in error && error.detail && typeof error.detail === "object" && !Array.isArray(error.detail) ? error.detail as Record<string, unknown> : undefined;
-      return new ApiError(error.code, error.message, status, detail);
+      return new ApiError(error.code, error.message, status, detail, retry);
     }
   }
-  return new ApiError("E_INTERNAL", "Request failed", status);
+  return new ApiError("E_INTERNAL", "Request failed", status, undefined, retry);
 }
 function invalidateCredentials(status: number, projectId?: string): void {
   if (status === 401 && projectId) clearToken(projectId);
@@ -40,7 +47,7 @@ async function request(path: string, options: ApiOptions): Promise<Response> {
   if (!response.ok) {
     invalidateCredentials(response.status, options.projectId);
     const payload: unknown = await response.json().catch(() => undefined);
-    throw envelopeError(payload, response.status);
+    throw envelopeError(payload, response.status, retryAfter(response.headers.get("Retry-After")));
   }
   return response;
 }
@@ -75,7 +82,7 @@ export function uploadWithProgress<T>(path: string, projectId: string, file: Fil
       try { payload = JSON.parse(request.responseText); } catch { /* Normalize invalid payloads below. */ }
       if (request.status < 200 || request.status >= 300) {
         invalidateCredentials(request.status, projectId);
-        reject(envelopeError(payload, request.status));
+        reject(envelopeError(payload, request.status, retryAfter(request.getResponseHeader("Retry-After"))));
       } else if (payload === undefined) reject(new ApiError("E_INTERNAL", "Invalid upload response", request.status));
       else resolve(payload as T);
     };

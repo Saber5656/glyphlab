@@ -40,3 +40,16 @@ it("saves valid fragment without putting it into history state", () => {
   expect(window.location.hash).toBe("");
   expect(window.history.state).toEqual({idx:2});
 });
+
+it("clears failed credentials on 401 but preserves a valid token on a missing subresource", async () => {
+  saveToken("p", token);
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('{"error":{"code":"E_NOT_FOUND","message":"missing"}}', {status:404})));
+  await expect(apiFetch("/projects/p/jobs/missing",{projectId:"p"})).rejects.toMatchObject({status:404,code:"E_NOT_FOUND"});expect(getToken("p")).toBe(token);
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("", {status:401})));
+  await expect(apiFetch("/projects/p",{projectId:"p"})).rejects.toMatchObject({status:401});expect(getToken("p")).toBeNull();
+});
+
+it("retains Retry-After for callers to schedule safe retries", async () => {
+ vi.stubGlobal("fetch",vi.fn().mockResolvedValue(new Response('{"error":{"code":"E_RATE_LIMITED","message":"later"}}',{status:429,headers:{"Retry-After":"12"}})));
+ await expect(apiFetch("/meta")).rejects.toMatchObject({code:"E_RATE_LIMITED",retryAfter:12});
+});
