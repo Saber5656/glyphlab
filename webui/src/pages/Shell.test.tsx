@@ -16,6 +16,7 @@ import {
     vi,
 } from "vitest";
 import App from "../App";
+import * as api from "../lib/api";
 import { getToken, saveToken } from "../lib/token";
 import { t, errorText } from "../i18n/ja";
 const id = "00000000-0000-0000-0000-000000000001",
@@ -280,4 +281,59 @@ it("centralizes static page copy including ASCII JSX text", () => {
         visit(tree);
         expect(literals, filename).toEqual([]);
     }
+});
+
+it.each([["", 429], ["/upload", 429], ["", 503], ["/upload", 503]] as const)("keeps the active project view mounted on background failure (%s, %i)", async (suffix, status) => {
+    saveToken(id, token);
+    const { client } = mount(`/p/${id}${suffix}`);
+    const control = suffix
+        ? await screen.findByRole("button", { name: t("chooseImage") })
+        : await screen.findByRole("button", { name: t("deleteNow") });
+    const code = status === 429 ? "E_RATE_LIMITED" : "E_INTERNAL";
+    server.use(http.get(`http://localhost/api/projects/${id}`, () =>
+        HttpResponse.json({ error: { code, message: "later" } },
+            { status, headers: { "Retry-After": "1" } })));
+    await client.invalidateQueries({ queryKey: ["summary", id] });
+    await waitFor(() => expect(screen.getAllByText(errorText(code)).length).toBeGreaterThan(0));
+    expect(control).toBeInTheDocument();
+    expect(getToken(id)).toBe(token);
+    server.resetHandlers();
+    await userEvent.click(screen.getByRole("button", { name: t("retry") }));
+    await waitFor(() => expect(screen.queryByText(errorText(code))).not.toBeInTheDocument());
+    expect(control).toBeInTheDocument();
+});
+
+it.each([401, 404])("still removes a cached project view when background refresh reports %i", async (status) => {
+    saveToken(id, token);
+    const { client } = mount(`/p/${id}`);
+    await screen.findByRole("button", { name: t("deleteNow") });
+    server.use(http.get(`http://localhost/api/projects/${id}`, () =>
+        HttpResponse.json({ error: { code: "E_NOT_FOUND", message: "gone" } }, { status })));
+    await client.invalidateQueries({ queryKey: ["summary", id] });
+    expect(await screen.findByLabelText(t("separateToken"))).toBeVisible();
+    expect(screen.queryByRole("button", { name: t("deleteNow") })).not.toBeInTheDocument();
+    expect(getToken(id)).toBeNull();
+});
+
+it("does not abort or restart an active upload when summary refresh is rate limited", async () => {
+    const upload = vi.spyOn(api, "uploadWithProgress").mockImplementation(() => new Promise(() => {}));
+    saveToken(id, token);
+    const { client } = mount(`/p/${id}/upload`);
+    await screen.findByRole("button", { name: t("chooseImage") });
+    await userEvent.upload(screen.getByTestId("upload-input"),
+        new File([new Uint8Array([255, 216, 255, 217])], "scan.jpg", { type: "image/jpeg" }));
+    await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
+    const signal = upload.mock.calls[0][4]!;
+    server.use(http.get(`http://localhost/api/projects/${id}`, () =>
+        HttpResponse.json({ error: { code: "E_RATE_LIMITED", message: "later" } }, { status: 429 })));
+    await client.invalidateQueries({ queryKey: ["summary", id] });
+    expect(await screen.findByText(errorText("E_RATE_LIMITED"))).toBeVisible();
+    expect(signal.aborted).toBe(false);
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("scan.jpg")).toBeVisible();
+    server.resetHandlers();
+    await userEvent.click(screen.getByRole("button", { name: t("retry") }));
+    await waitFor(() => expect(screen.queryByText(errorText("E_RATE_LIMITED"))).not.toBeInTheDocument());
+    expect(signal.aborted).toBe(false);
+    expect(upload).toHaveBeenCalledTimes(1);
 });

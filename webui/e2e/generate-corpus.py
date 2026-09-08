@@ -5,6 +5,8 @@ import json
 import sys
 from pathlib import Path
 
+from sidecar import export_sidecar
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--data", type=Path, required=True)
 parser.add_argument("--project", required=True)
@@ -18,18 +20,10 @@ from corpus.generate import generate_corpus  # noqa: E402
 from glyphlab.template.sidecar import read_sidecar  # noqa: E402
 from PIL import Image  # noqa: E402
 
-artifacts = args.data / "store/projects" / args.project / "artifacts"
-sidecars = []
-for candidate in artifacts.iterdir():
-    try:
-        value = json.loads(candidate.read_bytes())
-    except (ValueError, UnicodeDecodeError):
-        continue
-    if isinstance(value, dict) and value.get("schema") == "glyphlab.template/1":
-        sidecars.append(candidate)
-if len(sidecars) != 1:
-    raise RuntimeError(f"Expected one internal template sidecar, found {len(sidecars)}")
-sidecar = read_sidecar(sidecars[0])
+args.out.mkdir(parents=True, exist_ok=True)
+sidecar_path = args.out / "template-sidecar.json"
+sidecar_path.write_text(export_sidecar(repo, args.data, args.project))
+sidecar = read_sidecar(sidecar_path)
 if len(sidecar.pages) < 2:
     raise RuntimeError("The hosted journey needs a two-page charset")
 generate_corpus(args.pdf, sidecar, "clean-scan", [0, 1], 42, args.out)

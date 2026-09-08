@@ -53,9 +53,15 @@ export async function corpusFor(
     return dir;
 }
 export async function deleteViaUI(page: Page) {
-    await page.getByRole("link", { name: "glyphlab", exact: true }).click();
-    page.once("dialog", (dialog) => void dialog.accept());
-    await page.getByRole("button", { name: "今すぐ削除", exact: true }).click();
+    const home = page.getByRole("link", { name: "glyphlab", exact: true });
+    const target = await home.getAttribute("href");
+    expect(target).toBeTruthy();
+    const path = new URL(target!, page.url()).pathname.replace("/p/", "/api/projects/");
+    await home.click();
+    await submitWithRateLimit(page, path, 204, async () => {
+        page.once("dialog", (dialog) => void dialog.accept());
+        await page.getByRole("button", { name: "今すぐ削除", exact: true }).click();
+    }, "DELETE");
     await expect(page).toHaveURL(/\/$/);
 }
 
@@ -80,6 +86,51 @@ export async function openTokenLink(page: Page, link: string) {
         )
             throw new Error(
                 "Project view quota cannot recover within the browser acceptance budget",
+            );
+        const deadline = Date.now() + seconds * 1000;
+        await expect
+            .poll(() => Date.now(), {
+                timeout: seconds * 1000 + 3000,
+                intervals: [1000],
+            })
+            .toBeGreaterThanOrEqual(deadline);
+    }
+}
+
+/** Retry only an explicitly rejected UI mutation, following the server's deadline. */
+export async function submitWithRateLimit(
+    page: Page,
+    path: string,
+    expectedStatus: number,
+    action: () => Promise<void>,
+    method: "POST" | "DELETE" = "POST",
+) {
+    for (let attempt = 0; ; attempt++) {
+        const responseEvent = page.waitForResponse(
+            (response) =>
+                response.request().method() === method &&
+                new URL(response.url()).pathname === path,
+        );
+        await action();
+        const response = await responseEvent;
+        if (response.status() !== 429) {
+            expect(response.status(), `UI submission to ${path}`).toBe(
+                expectedStatus,
+            );
+            return;
+        }
+        await expect(
+            page.getByText("アクセスが集中しています。しばらく待って再試行してください", { exact: true }).first(),
+        ).toBeVisible();
+        const seconds = Number(response.headers()["retry-after"]);
+        if (
+            attempt >= 2 ||
+            !Number.isFinite(seconds) ||
+            seconds <= 0 ||
+            seconds > 90
+        )
+            throw new Error(
+                "UI submission quota cannot recover within the browser acceptance budget",
             );
         const deadline = Date.now() + seconds * 1000;
         await expect

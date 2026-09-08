@@ -16,13 +16,18 @@ const statusLabel = { missing: t("statusMissing"), auto: t("statusAuto"), accept
 function GlyphPreview({ projectId, glyph }: { projectId: string; glyph: GlyphResponse }) {
   const [preview, setPreview] = useState<{ key: string; url: string }>();
   const target = useRef<HTMLSpanElement>(null);
-  const cacheKey = `${projectId}:${glyph.codepoint}:${glyph.updated_at}`;
+  const revision = glyph.svg_url ? new URL(glyph.svg_url, window.location.origin).searchParams.get("v") : null;
+  const cacheKey = `${projectId}:${glyph.codepoint}:${revision ?? glyph.updated_at}`;
+  // Keep authenticated requests on the canonical API route. Only the geometry
+  // revision is forwarded, so status updates reuse previews and new ink bypasses
+  // the browser's previous SVG response cache.
+  const svgPath = `/projects/${projectId}/glyphs/${glyph.codepoint}.svg${revision === null ? "" : `?v=${encodeURIComponent(revision)}`}`;
   useEffect(() => {
     let disposed = false;
     let observer: IntersectionObserver | undefined;
     const load = () => {
       observer?.disconnect();
-      void glyphSvgCache.load(cacheKey, () => apiFetch<Blob>(`/projects/${projectId}/glyphs/${glyph.codepoint}.svg`, { projectId, raw: true }))
+      void glyphSvgCache.load(cacheKey, () => apiFetch<Blob>(svgPath, { projectId, raw: true }))
         .then(url => { if (!disposed && url) setPreview({ key: cacheKey, url }); })
         .catch(() => { /* The labeled character remains usable when its preview fails. */ });
     };
@@ -34,7 +39,7 @@ function GlyphPreview({ projectId, glyph }: { projectId: string; glyph: GlyphRes
       }
     }
     return () => { disposed = true; observer?.disconnect(); };
-  }, [cacheKey, glyph.codepoint, glyph.svg_url, projectId]);
+  }, [cacheKey, glyph.svg_url, projectId, svgPath]);
   return <span ref={target}>{preview?.key === cacheKey ? <img src={preview.url} alt={glyph.char} /> : <span className="missing-char">{glyph.char}</span>}</span>;
 }
 

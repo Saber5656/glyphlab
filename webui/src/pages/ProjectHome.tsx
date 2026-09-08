@@ -34,7 +34,7 @@ export default function ProjectHome() {
         },
     });
     if (summary.isLoading) return <p className="loading">{t("loading")}</p>;
-    if (summary.error)
+    if (summary.error && !summary.data)
         return (
             <section className="card">
                 <h1>

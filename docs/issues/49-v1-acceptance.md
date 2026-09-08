@@ -47,9 +47,11 @@ template filled by the run.
       memory via `docker stats --no-stream --format '{{.MemUsage}}'` sampled during the
       Playwright build step (must be < 800 MiB); fail if > budget ×1.5.
 2. `docs/ACCEPTANCE.md`: generated table — item / DESIGN ref / result / evidence (log
-   paths, artifact shas, timings, commit); committed by the human/agent after a green run
-   (the file in-repo holds the latest accepted run; Validation asserts it exists and
-   references the current HEAD's short SHA).
+   paths, artifact shas, timings, immutable tested commit); committed after a green run
+   as a report-only follow-up. Record the complete commit actually executed; a report
+   cannot contain the hash of the later commit that adds itself. Validate that the tested
+   commit is an ancestor and only this report changed since it. Any implementation change
+   requires a new acceptance run (see `docs/validation/acceptance.md`).
 3. `acceptance.yml`: `workflow_dispatch` + weekly cron (`schedule: cron "0 4 * * 1"`)
    on main; artifacts: playwright traces, built fonts, acceptance report. SHA-pinned
    actions, `permissions: contents: read`.
@@ -71,7 +73,11 @@ template filled by the run.
 
 ```bash
 bash scripts/acceptance.sh                      # exits 0 and writes docs/ACCEPTANCE.md
-test -s docs/ACCEPTANCE.md && grep -q "$(git rev-parse --short HEAD)" docs/ACCEPTANCE.md
+test -s docs/ACCEPTANCE.md
+tested_commit="$(sed -n 's/^Tested commit: `\([0-9a-f]\{40\}\)`.*/\1/p' docs/ACCEPTANCE.md | head -n1)"
+test "${#tested_commit}" -eq 40
+git merge-base --is-ancestor "$tested_commit" HEAD
+git diff --quiet "$tested_commit" HEAD -- . ':!docs/ACCEPTANCE.md'
 bash scripts/check_workflow_hygiene.sh .github/workflows/acceptance.yml
 grep -q 'cron: "0 4 \* \* 1"' .github/workflows/acceptance.yml
 git status --porcelain docs/ACCEPTANCE.md       # empty after committing the run

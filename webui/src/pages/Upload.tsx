@@ -55,7 +55,7 @@ export default function Upload() {
                     </div>
                 </>
             )}
-            {summary.error && (
+            {summary.error && !summary.data && (
                 <p role="alert">
                     {errorText(
                         summary.error instanceof ApiError

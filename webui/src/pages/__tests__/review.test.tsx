@@ -158,3 +158,35 @@ it("reflects explicit accept/reject round trips in a summary sharing server stat
   await waitFor(() => expect(screen.getByLabelText("summary-accepted")).toHaveTextContent("1"));
   expect(calls[1].reject).toEqual(["U+0041"]);
 });
+
+it("keeps the SVG preview when review changes only status and its timestamp", async () => {
+  glyphs[0].svg_url = "/api/projects/p/glyphs/U+0041.svg?v=upload-1";
+  const load = vi.spyOn(glyphSvgCache, "load");
+  server.use(http.post("http://localhost/api/projects/p/glyphs:review", () => {
+    glyphs[0] = { ...glyphs[0], status: "accepted", updated_at: "2026-09-08T00:01:00Z" };
+    return HttpResponse.json({ updated: 1, unchanged: 0, errors: [] });
+  }));
+  const client = mount();
+  await screen.findByRole("img", { name: "A" });
+  fireEvent.keyDown(screen.getByRole("button", { name: "A 未確認" }), { key: "a" });
+  await waitFor(() => expect(client.getQueryData<{ glyphs: GlyphResponse[] }>(["glyphs", "p"])?.glyphs[0].updated_at).toBe("2026-09-08T00:01:00Z"));
+  await screen.findByRole("button", { name: "A 採用" });
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+});
+
+it("fetches the new geometry revision even when timestamps match", async () => {
+  glyphs[0].svg_url = "/api/projects/p/glyphs/U+0041.svg?v=upload-1";
+  const revisions: (string | null)[] = [];
+  server.use(http.get("http://localhost/api/projects/p/glyphs/:cp", ({ request }) => {
+    revisions.push(new URL(request.url).searchParams.get("v"));
+    return new HttpResponse("<svg/>");
+  }));
+  vi.mocked(URL.createObjectURL).mockReturnValueOnce("blob:first").mockReturnValueOnce("blob:second");
+  const client = mount();
+  await waitFor(() => expect(screen.getByRole("img", { name: "A" })).toHaveAttribute("src", "blob:first"));
+  glyphs[0] = { ...glyphs[0], svg_url: "/api/projects/p/glyphs/U+0041.svg?v=upload-2" };
+  await act(() => client.invalidateQueries({ queryKey: ["glyphs", "p"] }));
+  await waitFor(() => expect(screen.getByRole("img", { name: "A" })).toHaveAttribute("src", "blob:second"));
+  expect(revisions).toEqual(["upload-1", "upload-2"]);
+});

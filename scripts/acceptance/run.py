@@ -172,6 +172,7 @@ class Runner:
             env["PLAYWRIGHT_BASE_URL"] = self.args.base_url
             env["GLYPHLAB_E2E_DATA_DIR"] = str(self.args.data_dir.resolve())
             env["E2E_DATA_DIR"] = str(self.args.data_dir.resolve())
+            env["E2E_COMPOSE_PROJECT"] = self.project
             sampling_started = time.monotonic()
             samples = []
             errors = []
