@@ -1,13 +1,33 @@
-[project]
-name = "glyphlab-service"
-version = "0.1.0.dev0"
-requires-python = ">=3.11"
-dependencies = ["glyphlab"]
-classifiers = ["Private :: Do Not Upload"]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project]
+name = "glyphlab-service"
+version = "0.1.0.dev0"
+classifiers = ["Private :: Do Not Upload"]
+requires-python = ">=3.11"
+dependencies = ["glyphlab", "fastapi>=0.115", "uvicorn>=0.34", "pydantic-settings>=2.8", "sqlalchemy>=2.0", "alembic>=1.15", "boto3>=1.37", "python-multipart>=0.0.20", "slowapi>=0.1.9"]
+
+[project.optional-dependencies]
+qa = ["glyphlab[qa]"]
+postgres = ["psycopg[binary]>=3.2"]
+test = ["pytest>=8", "httpx>=0.28", "moto[s3]>=5", "schemathesis>=4", "psutil>=6"]
+
+[project.scripts]
+glyphlab-service = "glyphlab_service.app:main"
+glyphlab-service-migrate = "glyphlab_service.db.migrate:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/glyphlab_service"]
+
 [tool.uv.sources]
 glyphlab = { workspace = true }
+
+[tool.ruff]
+extend = "../../pyproject.toml"
+
+[tool.ruff.lint.per-file-ignores]
+"src/glyphlab_service/api/*.py" = ["B008"]
+"src/glyphlab_service/auth.py" = ["B008"]
+"tests/**" = ["S101", "S106"] # Fake credentials are limited to moto fixtures.
