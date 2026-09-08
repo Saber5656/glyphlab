@@ -13,7 +13,7 @@ from glyphlab.project.config import (
     validate_project_name,
     write_config,
 )
-from glyphlab.project.store import ProjectStore
+from glyphlab.project.store import ProjectStore, StatusData, StatusEntry, StatusSource
 
 __all__ = [
     "BuildConfig",
@@ -21,6 +21,9 @@ __all__ = [
     "ProjectConfig",
     "ProjectSettings",
     "ProjectStore",
+    "StatusData",
+    "StatusEntry",
+    "StatusSource",
     "load_charset",
     "get_charset",
     "load_custom_charset",

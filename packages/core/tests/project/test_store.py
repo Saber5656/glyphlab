@@ -53,3 +53,12 @@ def test_atomic_status_and_scans(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     (root / "scans/c.txt").write_bytes(b"")
     assert [path.name for path in store.list_scans()] == ["a.JPG", "b.heic"]
     assert json.loads((root / "glyphs/status.json").read_text())["U+0041"]["status"] == "auto"
+
+
+def test_status_shape_is_validated(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    store = ProjectStore(root)
+    store.init(make_config())
+    (root / "glyphs/status.json").write_text('{"U+0041": {"status": "auto"}}')
+    with pytest.raises(ConfigError):
+        store.read_status()
