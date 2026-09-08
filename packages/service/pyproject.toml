@@ -1,0 +1,13 @@
+[project]
+name = "glyphlab-service"
+version = "0.1.0.dev0"
+requires-python = ">=3.11"
+dependencies = ["glyphlab"]
+classifiers = ["Private :: Do Not Upload"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+glyphlab = { workspace = true }
