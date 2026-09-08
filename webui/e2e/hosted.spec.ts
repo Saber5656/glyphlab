@@ -7,6 +7,7 @@ import {
     downloadBytes,
     observeTokenSafety,
     openTokenLink,
+    submitWithRateLimit,
 } from "./helpers";
 
 type Artifact = { id: string; kind: string; sha256: string };
@@ -129,6 +130,16 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         await expect(page.locator(".result").first()).toContainText(
             /(?:extracted:|抽出) [1-9]\d*/,
         );
+        const svgRequests = new Map<string, number>();
+        page.on("request", (request) => {
+            const url = new URL(request.url());
+            if (
+                request.method() === "GET" &&
+                url.pathname.endsWith(".svg") &&
+                url.pathname.includes("/glyphs/")
+            )
+                svgRequests.set(url.href, (svgRequests.get(url.href) ?? 0) + 1);
+        });
         await page
             .getByRole("link", { name: "確認画面へ", exact: true })
             .first()
@@ -136,16 +147,17 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         const automatic = page.locator(".glyph-cell.status-auto");
         await expect(automatic.first()).toBeVisible();
         const count = await automatic.count();
-        const reviewSaved = page.waitForResponse(
-            (response) =>
-                response.request().method() === "POST" &&
-                new URL(response.url()).pathname.endsWith("/glyphs:review"),
+        await submitWithRateLimit(
+            page,
+            `/api/projects/${projectId}/glyphs:review`,
+            200,
+            async () => {
+                page.once("dialog", (dialog) => void dialog.accept());
+                await page
+                    .getByRole("button", { name: "AUTOをすべて採用", exact: true })
+                    .click();
+            },
         );
-        page.once("dialog", (dialog) => void dialog.accept());
-        await page
-            .getByRole("button", { name: "AUTOをすべて採用", exact: true })
-            .click();
-        expect((await reviewSaved).ok()).toBe(true);
         await expect(automatic).toHaveCount(0);
         await expect(page.locator(".glyph-cell.status-accepted")).toHaveCount(
             count,
@@ -159,12 +171,30 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
             contentType: "image/png",
         });
         await page.getByRole("link", { name: "ビルドへ", exact: true }).click();
-        await page
-            .getByRole("button", { name: "フォントを生成", exact: true })
-            .click();
+        await submitWithRateLimit(
+            page,
+            `/api/projects/${projectId}/builds`,
+            202,
+            () =>
+                page
+                    .getByRole("button", { name: "フォントを生成", exact: true })
+                    .click(),
+        );
         await expect(
             page.locator(".artifact").filter({ hasText: /^ttf/ }),
         ).toBeVisible({ timeout: 120_000 });
+        // A quota retry must not hide the original duplicate-preview regression.
+        expect(svgRequests.size).toBeGreaterThan(0);
+        for (const [url, requests] of svgRequests) {
+            expect(
+                new URL(url).searchParams.get("v"),
+                "SVG URL must carry its geometry revision",
+            ).toBeTruthy();
+            expect(
+                requests,
+                "Review must not refetch an unchanged geometry revision",
+            ).toBe(1);
+        }
         await expect
             .poll(
                 () =>
