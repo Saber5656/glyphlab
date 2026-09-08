@@ -1,11 +1,12 @@
 import { beforeAll, afterAll, beforeEach, afterEach, it, expect, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { readFileSync } from "node:fs";
 import Review from "../Review";
+import { apiFetch } from "../../lib/api";
 import { glyphSvgCache } from "../../lib/svgCache";
 import type { GlyphResponse, ReviewRequest } from "../../generated/types";
 
@@ -19,6 +20,7 @@ const fixture: GlyphResponse[] = [
 let glyphs: GlyphResponse[];
 let calls: ReviewRequest[];
 const server = setupServer(
+  http.get("http://localhost/api/projects/p", () => HttpResponse.json({ accepted: glyphs.filter(g => g.status === "accepted").length })),
   http.get("http://localhost/api/projects/p/glyphs", () => HttpResponse.json({ glyphs, next_cursor: null })),
   http.get("http://localhost/api/projects/p/glyphs/:cp", ({ request }) => {
     expect(request.headers.get("Authorization")).toBe("Bearer glp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
@@ -41,9 +43,13 @@ beforeEach(() => {
   URL.createObjectURL = vi.fn(() => "blob:preview"); URL.revokeObjectURL = vi.fn();
 });
 afterEach(() => { cleanup(); glyphSvgCache.clear(); server.resetHandlers(); vi.restoreAllMocks(); globalThis.fetch = interceptedFetch; });
+function SummaryObserver() {
+  const summary = useQuery({ queryKey: ["summary", "p"], queryFn: () => apiFetch<{ accepted: number }>("/projects/p", { projectId: "p" }) });
+  return <output aria-label="summary-accepted">{summary.data?.accepted}</output>;
+}
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  render(<QueryClientProvider client={client}><MemoryRouter initialEntries={["/p/p/review"]}><Routes><Route path="/p/:projectId/review" element={<Review />} /></Routes></MemoryRouter></QueryClientProvider>);
+  render(<QueryClientProvider client={client}><SummaryObserver /><MemoryRouter initialEntries={["/p/p/review"]}><Routes><Route path="/p/:projectId/review" element={<Review />} /></Routes></MemoryRouter></QueryClientProvider>);
   return client;
 }
 it("renders canonical codepoints, sections, statuses and an authenticated blob image", async () => {
@@ -131,4 +137,24 @@ it("loads SVG only when near the viewport and ignores late completion after unmo
   await waitFor(() => expect(requests).toBe(1)); cleanup(); glyphSvgCache.clear(); finish();
   await waitFor(() => expect(disconnect).toHaveBeenCalled());
   expect(URL.createObjectURL).not.toHaveBeenCalled(); vi.unstubAllGlobals();
+});
+
+it("navigates vertically by grid geometry and horizontally by charset order", async () => {
+  mount(); const a = await screen.findByRole("button", { name: "A 未確認" });
+  const cells = [a, screen.getByRole("button", { name: "B 採用" }), screen.getByRole("button", { name: "あ 却下" }), screen.getByRole("button", { name: "ア 未取込" }), screen.getByRole("button", { name: "、 未確認" })];
+  cells.forEach((cell, index) => vi.spyOn(cell, "getBoundingClientRect").mockReturnValue({ x: index % 2 * 100, y: Math.floor(index / 2) * 100, left: index % 2 * 100, top: Math.floor(index / 2) * 100, width: 80, height: 80, right: 0, bottom: 0, toJSON() {} }));
+  act(() => a.focus()); fireEvent.keyDown(a, { key: "ArrowDown" }); expect(cells[2]).toHaveFocus();
+  fireEvent.keyDown(cells[2], { key: "ArrowUp" }); expect(a).toHaveFocus();
+  fireEvent.keyDown(a, { key: "ArrowRight" }); expect(cells[1]).toHaveFocus();
+  fireEvent.keyDown(cells[1], { key: "ArrowLeft" }); expect(a).toHaveFocus();
+});
+
+it("reflects explicit accept/reject round trips in a summary sharing server state", async () => {
+  mount(); fireEvent.click(await screen.findByRole("button", { name: "A 未確認" }));
+  fireEvent.click(screen.getByRole("button", { name: "A を採用" }));
+  await waitFor(() => expect(screen.getByLabelText("summary-accepted")).toHaveTextContent("2"));
+  await waitFor(() => expect(screen.getByRole("button", { name: "A を却下" })).toBeEnabled());
+  fireEvent.click(screen.getByRole("button", { name: "A を却下" }));
+  await waitFor(() => expect(screen.getByLabelText("summary-accepted")).toHaveTextContent("1"));
+  expect(calls[1].reject).toEqual(["U+0041"]);
 });

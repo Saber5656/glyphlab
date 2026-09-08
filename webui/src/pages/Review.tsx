@@ -80,8 +80,15 @@ export default function Review() {
       event.preventDefault();
       const cells = Array.from(grid.current?.querySelectorAll<HTMLButtonElement>(".glyph-cell") ?? []);
       const index = cells.indexOf(event.currentTarget);
-      const delta = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
-      cells[Math.max(0, Math.min(cells.length - 1, index + delta))]?.focus();
+      const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        const origin = event.currentTarget.getBoundingClientRect();
+        const center = origin.left + origin.width / 2;
+        const candidates = cells.map(cell => ({ cell, rect: cell.getBoundingClientRect() }))
+          .filter(({ rect }) => (rect.top - origin.top) * direction > 1)
+          .sort((a, b) => Math.abs(a.rect.top - origin.top) - Math.abs(b.rect.top - origin.top) || Math.abs(a.rect.left + a.rect.width / 2 - center) - Math.abs(b.rect.left + b.rect.width / 2 - center));
+        candidates[0]?.cell.focus();
+      } else cells[Math.max(0, Math.min(cells.length - 1, index + direction))]?.focus();
     } else if (event.key === "Escape") { setSelected([]); setMulti(false); }
   }
   const buildCta = counts.accepted + counts.auto > 0 ? <Link className="button" to={`/p/${projectId}/build`}>{t("toBuild")}</Link> : <button className="button" disabled>{t("toBuild")}</button>;
@@ -95,7 +102,7 @@ export default function Review() {
     </div>
     {query.isPending && <p role="status">{t("loading")}</p>}
     {(query.error || review.error || partialError) && <p role="alert" className="notice error">{errorText((query.error || review.error) instanceof ApiError ? ((query.error || review.error) as ApiError).code : partialError ? "E_VALIDATION" : "E_INTERNAL")}</p>}
-    {current && !multi && <div className="review-actions" aria-label={t("focusedGlyph")}><span>{current.char} · {current.codepoint}</span><button disabled={current.status === "missing" || review.isPending} aria-label={`${current.char} を採用`} onClick={() => act([current.codepoint], "accept")}>{t("accepted")}</button><button disabled={current.status === "missing" || review.isPending} aria-label={`${current.char} を却下`} onClick={() => act([current.codepoint], "reject")}>{t("rejected")}</button></div>}
+    {current && !multi && <div className="review-actions" aria-label={t("focusedGlyph")}><span>{current.char} · {current.codepoint}</span><button disabled={current.status === "missing" || review.isPending} aria-label={t("acceptGlyph", { char: current.char })} onClick={() => act([current.codepoint], "accept")}>{t("accepted")}</button><button disabled={current.status === "missing" || review.isPending} aria-label={t("rejectGlyph", { char: current.char })} onClick={() => act([current.codepoint], "reject")}>{t("rejected")}</button></div>}
     {/* v1: at most 276 drawn cells. D2 kanji in v2 requires pagination and virtualization. */}
     <div className="review-grid" ref={grid}>
       {sections.map((name, index) => <div className="glyph-section" key={name}><h2>{t(name)}</h2><div className="grid">
@@ -104,7 +111,7 @@ export default function Review() {
             {glyph.status === "missing" ? <span className="missing-char">{glyph.char}</span> : <GlyphPreview projectId={projectId} glyph={glyph} />}
             <small>{glyph.char} · {statusLabel[glyph.status]}</small>{glyph.warnings.length > 0 && <i title={glyph.warnings.map(warningText).join("、")}>!</i>}
           </button>
-          {multi && <label className="glyph-select"><input type="checkbox" aria-label={`${glyph.char} を選択`} disabled={glyph.status === "missing" || review.isPending} checked={selected.includes(glyph.codepoint)} onChange={event => setSelected(old => event.target.checked ? [...old, glyph.codepoint] : old.filter(cp => cp !== glyph.codepoint))} /></label>}
+          {multi && <label className="glyph-select"><input type="checkbox" aria-label={t("selectGlyph", { char: glyph.char })} disabled={glyph.status === "missing" || review.isPending} checked={selected.includes(glyph.codepoint)} onChange={event => setSelected(old => event.target.checked ? [...old, glyph.codepoint] : old.filter(cp => cp !== glyph.codepoint))} /></label>}
         </div>)}
       </div></div>)}
     </div>

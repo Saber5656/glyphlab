@@ -28,3 +28,19 @@ it("deduplicates requests, caps concurrency and discards a load cleared before c
   expect(await a).toBeUndefined(); expect(await duplicate).toBeUndefined(); expect(await b).toBeUndefined();
   expect(first).toHaveBeenCalledTimes(1); expect(URL.createObjectURL).not.toHaveBeenCalled();
 });
+it("enforces the production 350-entry limit and six active requests", async () => {
+  let id = 0; URL.createObjectURL = vi.fn(() => `blob:${++id}`); URL.revokeObjectURL = vi.fn();
+  const cache = new BlobUrlCache();
+  for (let i = 0; i < 351; i++) await cache.load(String(i), async () => new Blob());
+  expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1); expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:1");
+  cache.clear(); expect(URL.revokeObjectURL).toHaveBeenCalledTimes(351);
+  let active = 0; let maximum = 0;
+  const pending: (() => void)[] = [];
+  const promises = Array.from({ length: 12 }, (_, i) => cache.load(String(i), async () => {
+    active++; maximum = Math.max(maximum, active);
+    await new Promise<void>(resolve => pending.push(resolve)); active--; return new Blob();
+  }));
+  expect(active).toBe(6);
+  for (let batch = 0; batch < 2; batch++) { pending.splice(0).forEach(resolve => resolve()); await new Promise(resolve => setTimeout(resolve, 0)); }
+  await Promise.all(promises); expect(maximum).toBe(6); cache.clear();
+});
