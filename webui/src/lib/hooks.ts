@@ -25,4 +25,3 @@ export function useObjectUrl(blob: Blob | undefined): string | undefined {
   }, [blob]);
   return url;
 }
-
