@@ -2,7 +2,7 @@
 name = "glyphlab"
 version = "0.1.0.dev0"
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.7"]
+dependencies = ["defusedxml>=0.7.1", "pydantic>=2.7"]
 
 [project.optional-dependencies]
 trace = []

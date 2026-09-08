@@ -2,17 +2,23 @@
 name = "glyphlab-workspace"
 version = "0.1.0.dev0"
 requires-python = ">=3.11"
+dependencies = ["glyphlab", "glyphlab-service"]
 
 [tool.uv.workspace]
 members = ["packages/core", "packages/service"]
 
+[tool.uv.sources]
+glyphlab = { workspace = true }
+glyphlab-service = { workspace = true }
+
 [dependency-groups]
 dev = [
-  "hypothesis>=6.100",
-  "mypy>=1.14",
-  "pre-commit>=4",
-  "pytest>=8",
-  "ruff>=0.8",
+    "hypothesis>=6.100",
+    "mypy>=1.14",
+    "pre-commit>=4",
+    "pytest>=8",
+    "ruff>=0.8",
+    "types-defusedxml>=0.7",
 ]
 
 [tool.ruff]
