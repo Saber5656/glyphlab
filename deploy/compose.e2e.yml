@@ -1,0 +1,8 @@
+services:
+  app:
+    volumes:
+      - ../e2e-data:/data
+    environment:
+      GLYPHLAB_RETENTION_DAYS: '14'
+      GLYPHLAB_SWEEP_INTERVAL_S: '5'
+      SOURCE_DATE_EPOCH: '1700000000'

@@ -1,0 +1,61 @@
+[project]
+name = "glyphlab-workspace"
+version = "0.1.0.dev0"
+requires-python = ">=3.11"
+dependencies = ["glyphlab", "glyphlab-service"]
+
+# opentype-sanitizer 9.2.0 still passes dry_run to copy_file in source builds.
+# Setuptools 81 removed it: https://setuptools.pypa.io/en/latest/history.html#v81-0-0
+[tool.uv]
+build-constraint-dependencies = ["setuptools<81"]
+
+[tool.uv.workspace]
+members = ["packages/core", "packages/service"]
+
+[dependency-groups]
+dev = [
+  "types-defusedxml>=0.7",
+  "glyphlab",
+  "glyphlab-service[test]",
+  "fontbakery>=1.1,<1.2",
+  "hypothesis>=6.100",
+  "jsonschema>=4",
+  "mypy>=1.14",
+  "pre-commit>=4",
+  "pytest>=8",
+  "ruff>=0.8",
+  "pypdfium2>=5.13.0",
+  "potracer>=0.0.4",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.format]
+exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+files = ["packages/core/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages"]
+addopts = "-m 'not slow and not packaging'"
+markers = ["slow: full pipeline acceptance", "packaging: isolated wheel installation"]
+
+[tool.bandit]
+
+[[tool.mypy.overrides]]
+module = ["fontTools.*", "reportlab.*", "pathops"]
+ignore_missing_imports = true
+
+[tool.uv.sources]
+glyphlab = { workspace = true }
+glyphlab-service = { workspace = true }

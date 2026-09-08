@@ -1,0 +1,17 @@
+# Calibrated against Font Bakery 1.1.0 universal on the golden partial-charset font.
+# Structural safety, coverage, advances, and bounds remain mandatory and cannot be waived.
+[[allow]]
+check = "case_mapping"
+reason = "Partial handwriting coverage is supported: an accepted capital does not require its lowercase counterpart (DESIGN 10.1). Missing glyphs are reported explicitly."
+
+[[allow]]
+check = "whitespace_glyphs"
+reason = "The canonical presets synthesize only U+0020/U+3000. Adding U+00A0 would violate exact charset coverage (DESIGN 6.1 and 11.2)."
+
+[[allow]]
+check = "smart_dropout"
+reason = "v1 explicitly produces unhinted fonts (NG9); TrueType smart-dropout instructions are not part of the handwritten outline pipeline. Modern rasterizers render the validated outlines without them."
+
+[[allow]]
+check = "cmap/format_12"
+reason = "DESIGN 10.2 requires both cmap 4 and 12 even for ASCII-only fonts. The extra table is intentional; mandatory structural QA verifies both tables exist and cover BMP and all scalars respectively, so absent or inconsistent mappings remain failures."

@@ -1,0 +1,6 @@
+# Use an isolated compose project and data volume for the short-retention acceptance test.
+services:
+  app:
+    environment:
+      GLYPHLAB_RETENTION_DAYS: '0.001'
+      GLYPHLAB_SWEEP_INTERVAL_S: '5'

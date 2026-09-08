@@ -45,7 +45,7 @@ geometry; this issue is table bookkeeping done exactly once, exactly right.
    as required for TrueType (clockwise outer).
 4. Tables (fontBuilder, UPM 1000): `head` (flags 0b11, lowestRecPPEM 7; `created`/`modified`
    from `SOURCE_DATE_EPOCH` env if set else current time), `hhea`/`OS/2` per §10.3 exactly
-   (winAscent 880/winDescent 120, typo 880/−120/0, fsType 0, ulCodePageRange1 bits {0, 17}
+   (winAscent max(880, actual yMax)/winDescent max(120, −actual yMin), typo 880/−120/0, fsType 0, ulCodePageRange1 bits {0, 17}
    for `ja-basic-v1`, {0} for `ascii`; xAvgCharWidth computed), `cmap` formats 4 + 12,
    `hmtx`, `post` v2.0, `maxp`, `gasp` (rangeMaxPPEM 0xFFFF → behavior 0b1111), `name`
    with exactly these strings (no other inputs exist — DESIGN §10.4):

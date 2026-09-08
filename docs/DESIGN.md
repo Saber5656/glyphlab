@@ -470,8 +470,9 @@ Missing drawn glyphs are simply absent from the font (no placeholder); the proof
 
 | Field | Value |
 |---|---|
-| OS/2 sTypoAscender / hhea.ascender / usWinAscent | 880 |
-| OS/2 sTypoDescender / hhea.descender | −120 (winDescent 120) |
+| OS/2 sTypoAscender / hhea.ascender | 880 |
+| OS/2 usWinAscent / usWinDescent | max(880, actual yMax) / max(120, −actual yMin) |
+| OS/2 sTypoDescender / hhea.descender | −120 |
 | sTypoLineGap / lineGap | 0 |
 | OS/2 fsType | 0 (installable — user owns their font) |
 | ulCodePageRange1 | bit 17 (JIS/Shift-JIS) + bit 0 (Latin 1) for `ja-basic-v1` |
@@ -961,3 +962,17 @@ suite green.
 Every code additionally has a ja UI string (§16.3). The registry (issue 06) carries exactly
 these HTTP/CLI mappings; adding a code = updating this table + the registry + the ja map
 (enforced by a registry unit test).
+
+### Implementation clarification: Windows clipping bounds
+
+The fitting contract permits ink within y ∈ [−250, 1000], including Latin
+descenders below −120. Fixed Windows bounds would clip valid handwriting and
+fail Font Bakery's `family/win_ascent_and_descent` check. Windows bounds therefore
+expand to the actual compiled glyph extrema, with a minimum of 880/120. Typo
+and hhea metrics remain 880/−120/0. This resolves the earlier fixed-win-metrics
+conflict without changing fitting or disabling clipping checks.
+
+Format 4 and format 12 cmap tables remain mandatory even for ASCII-only fonts.
+Font Bakery's `cmap/format_12` recommendation against a redundant table is
+allowlisted; independent structural QA requires format 4 to cover selected BMP codepoints and
+format 12 to cover all selected Unicode scalars (including supplementary planes).

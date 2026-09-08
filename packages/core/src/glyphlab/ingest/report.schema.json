@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "glyphlab ingest report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "page_index", "template_id", "counts", "cells", "diagnostics"],
+  "properties": {
+    "schema": {"const": "glyphlab.ingest-report/1"},
+    "page_index": {"type": "integer", "minimum": 0, "maximum": 11},
+    "template_id": {"type": "string", "format": "uuid"},
+    "counts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["extracted", "empty", "skipped_accepted", "failed"],
+      "properties": {
+        "extracted": {"type": "integer", "minimum": 0},
+        "empty": {"type": "integer", "minimum": 0},
+        "skipped_accepted": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "cells": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["codepoint", "outcome", "warnings"],
+      "properties": {
+        "codepoint": {"type": "string", "pattern": "^U\\+[0-9A-F]{4,6}$"},
+        "outcome": {"enum": ["extracted", "empty", "skipped_accepted", "failed"]},
+        "warnings": {"type": "array", "items": {"enum": ["LOW_INK", "TOUCHES_BORDER", "TINY_CONTOURS_REMOVED", "LARGE_INK_BLOB", "OFF_GUIDE"]}},
+        "error_code": {"type": "string", "pattern": "^E_[A-Z_]+$"}
+      }
+    }},
+    "diagnostics": {"type": "object"}
+  }
+}
