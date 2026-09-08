@@ -276,9 +276,14 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
             if (request.method() === "POST" && /\/uploads$/.test(request.url()))
                 uploadRequests.push(request.url());
         });
-        await page
-            .locator("input[type=file]")
-            .setInputFiles(join(corpus, "blank.jpg"));
+        let uploadAttempt = 0;
+        await submitWithRateLimit(page, `/api/projects/${projectId}/uploads`, 202, async () => {
+            if (uploadAttempt++ === 0)
+                await page.locator("input[type=file]").setInputFiles(join(corpus, "blank.jpg"));
+            else
+                await page.locator(".upload-item").filter({ hasText: "blank.jpg" })
+                    .getByRole("button", { name: "再試行", exact: true }).click();
+        });
         await expect(
             page.getByText(
                 "四隅のマーカーが見つかりません。ページ全体が写るように撮り直してください",
@@ -286,9 +291,12 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
             ),
         ).toBeVisible({ timeout: 120_000 });
         await expect(
-            page.getByRole("button", { name: "再試行", exact: true }),
+            page.locator(".upload-item").filter({ hasText: "blank.jpg" })
+                .getByRole("button", { name: "再試行", exact: true }),
         ).toBeVisible();
-        expect(uploadRequests).toHaveLength(1);
+        const submitted = uploadRequests.length;
+        expect(submitted).toBeGreaterThanOrEqual(1);
+        expect(submitted).toBeLessThanOrEqual(3);
         await page.locator("input[type=file]").setInputFiles({
             name: "too-large.jpg",
             mimeType: "image/jpeg",
@@ -302,7 +310,7 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
                 },
             ),
         ).toBeVisible();
-        expect(uploadRequests).toHaveLength(1);
+        expect(uploadRequests).toHaveLength(submitted);
         await deleteViaUI(page);
         deleted = true;
         await expect

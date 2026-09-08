@@ -121,7 +121,7 @@ function ProjectLayout() {
                 <p>{t("loading")}</p>
             </main>
         );
-    if (summary.error)
+    if (summary.error && !summary.data)
         return (
             <main className="shell">
                 <p role="alert">
@@ -149,6 +149,20 @@ function ProjectLayout() {
                 </nav>
             </header>
             <main className="shell">
+                {summary.error && (
+                    <div role="alert" className="notice error">
+                        <p>
+                            {errorText(
+                                summary.error instanceof ApiError
+                                    ? summary.error.code
+                                    : "E_INTERNAL",
+                            )}
+                        </p>
+                        <button onClick={() => void summary.refetch()}>
+                            {t("retry")}
+                        </button>
+                    </div>
+                )}
                 <Outlet key={projectId} />
             </main>
         </>

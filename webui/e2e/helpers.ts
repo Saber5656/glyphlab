@@ -53,9 +53,15 @@ export async function corpusFor(
     return dir;
 }
 export async function deleteViaUI(page: Page) {
-    await page.getByRole("link", { name: "glyphlab", exact: true }).click();
-    page.once("dialog", (dialog) => void dialog.accept());
-    await page.getByRole("button", { name: "今すぐ削除", exact: true }).click();
+    const home = page.getByRole("link", { name: "glyphlab", exact: true });
+    const target = await home.getAttribute("href");
+    expect(target).toBeTruthy();
+    const path = new URL(target!, page.url()).pathname.replace("/p/", "/api/projects/");
+    await home.click();
+    await submitWithRateLimit(page, path, 204, async () => {
+        page.once("dialog", (dialog) => void dialog.accept());
+        await page.getByRole("button", { name: "今すぐ削除", exact: true }).click();
+    }, "DELETE");
     await expect(page).toHaveURL(/\/$/);
 }
 
@@ -97,11 +103,12 @@ export async function submitWithRateLimit(
     path: string,
     expectedStatus: number,
     action: () => Promise<void>,
+    method: "POST" | "DELETE" = "POST",
 ) {
     for (let attempt = 0; ; attempt++) {
         const responseEvent = page.waitForResponse(
             (response) =>
-                response.request().method() === "POST" &&
+                response.request().method() === method &&
                 new URL(response.url()).pathname === path,
         );
         await action();
