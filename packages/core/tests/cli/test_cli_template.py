@@ -18,10 +18,17 @@ def test_template_lifecycle(tmp_path):
     first = json.loads(result.stdout)["data"]
     again = runner.invoke(app, args)
     assert json.loads(again.stdout)["data"]["template_id"] == first["template_id"]
+    sidecar_path = root / "template/template.json"
+    saved = json.loads(sidecar_path.read_text())
+    cells = saved["pages"][0]["cells"]
+    cells[0]["codepoint"], cells[1]["codepoint"] = cells[1]["codepoint"], cells[0]["codepoint"]
+    sidecar_path.write_text(json.dumps(saved))
+    canonical = sidecar_path.read_bytes()
     (root / "template/ascii.pdf").unlink()
     result = runner.invoke(app, args)
     assert result.exit_code == 0, result.output
     assert (root / "template/ascii.pdf").exists()
+    assert sidecar_path.read_bytes() == canonical
     assert json.loads(result.stdout)["data"]["template_id"] == first["template_id"]
     assert runner.invoke(app, args + ["--regenerate"]).exit_code == 3
     result = runner.invoke(app, args + ["--regenerate", "--yes"])

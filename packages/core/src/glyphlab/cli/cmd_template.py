@@ -15,15 +15,15 @@ def template(
     yes: bool = False,
     open_pdf: bool = typer.Option(False, "--open"),
 ) -> None:
-    from glyphlab.template import generate_template
+    from glyphlab.template import generate_template, template_paths
+    from glyphlab.template.pdf import render_pdf
     from glyphlab.template.sidecar import read_sidecar
 
     ctx = current()
     config, store = require_project(ctx)
     charset = resolve_charset(config.project.charset, ctx.project_root)
     directory = store.root / "template"
-    sidecar_path = directory / "template.json"
-    pdf = directory / f"{charset.charset_id}.pdf"
+    pdf, sidecar_path = template_paths(directory, charset)
     template_id = str(uuid.uuid4())
     pages = (sum(c.drawn for c in charset.chars) + 48) // 49
     if regenerate:
@@ -40,6 +40,9 @@ def template(
     elif sidecar_path.exists():
         sidecar = read_sidecar(sidecar_path, expected_charset=charset)
         template_id = str(sidecar.template_id)
+        pages = len(sidecar.pages)
+        if not pdf.is_file():
+            render_pdf(pdf, sidecar, charset, template_id, config.project.name)
         if pdf.is_file():
             success(
                 {
