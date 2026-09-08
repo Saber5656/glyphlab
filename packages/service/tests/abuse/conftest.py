@@ -30,3 +30,32 @@ def client(request):
         app = request.getfixturevalue("app")
         with TestClient(app, raise_server_exceptions=False) as result:
             yield result
+
+
+@pytest.fixture(scope="session")
+def remote_project():
+    # The HTTP-only suite shares one project so its own setup respects 3 creates/min.
+    base = os.environ["ABUSE_BASE_URL"]
+    with httpx.Client(base_url=base, timeout=160) as client:
+        response = client.post(
+            "/api/projects",
+            json={"name": "HTTP test", "family_name": "HttpTest", "charset_id": "ascii"},
+        )
+        assert response.status_code == 201, response.text
+        project = response.json()
+        yield project
+        client.delete(
+            "/api/projects/" + project["project_id"],
+            headers={"Authorization": "Bearer " + project["token"]},
+        )
+
+
+@pytest.fixture
+def project(client, request):
+    if os.environ.get("ABUSE_BASE_URL"):
+        return request.getfixturevalue("remote_project")
+    response = client.post(
+        "/api/projects", json={"name": "テスト", "family_name": "TestFont", "charset_id": "ascii"}
+    )
+    assert response.status_code == 201, response.text
+    return response.json()

@@ -130,7 +130,7 @@ def test_t6_traversal(client, app, project):
     assert not (app.state.settings.data_dir / "secrets").exists()
 
 
-def test_t7_xss_name_and_headers(client, project):
+def test_t7_xss_name_and_headers(client):
     """T7: Names remain data and generated SVG/HTML use restrictive response CSP."""
     response = client.post(
         "/api/projects",
