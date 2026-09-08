@@ -8,6 +8,7 @@ import {
     observeTokenSafety,
     openTokenLink,
     submitWithRateLimit,
+    uploadBatchWithRateLimit,
 } from "./helpers";
 
 type Artifact = { id: string; kind: string; sha256: string };
@@ -110,21 +111,13 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         await page
             .getByRole("link", { name: "書いてアップロード", exact: true })
             .click();
-        const uploaded: string[] = [];
-        page.on("request", (request) => {
-            if (request.method() === "POST" && /\/uploads$/.test(request.url()))
-                uploaded.push(request.url());
-        });
-        await page
-            .locator("input[type=file]")
-            .setInputFiles([
-                join(corpus, "page-0.png"),
-                join(corpus, "page-1.png"),
-            ]);
+        await uploadBatchWithRateLimit(page, projectId, [
+            join(corpus, "page-0.png"),
+            join(corpus, "page-1.png"),
+        ]);
         await expect(
             page.locator(".upload-item").filter({ hasText: "完了" }),
         ).toHaveCount(2, { timeout: 120_000 });
-        expect(uploaded).toHaveLength(2);
         await expect(page.getByText("ページ 1", { exact: true })).toBeVisible();
         await expect(page.getByText("ページ 2", { exact: true })).toBeVisible();
         await expect(page.locator(".result").first()).toContainText(
@@ -140,10 +133,13 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
             )
                 svgRequests.set(url.href, (svgRequests.get(url.href) ?? 0) + 1);
         });
-        await page
-            .getByRole("link", { name: "確認画面へ", exact: true })
-            .first()
-            .click();
+        let reviewAttempt = 0;
+        await submitWithRateLimit(page, `/api/projects/${projectId}/glyphs`, 200, async () => {
+            if (reviewAttempt++ === 0)
+                await page.getByRole("link", { name: "確認画面へ", exact: true }).first().click();
+            else
+                await page.getByRole("button", { name: "文字を再取得", exact: true }).click();
+        }, "GET");
         const automatic = page.locator(".glyph-cell.status-auto");
         await expect(automatic.first()).toBeVisible();
         const count = await automatic.count();
