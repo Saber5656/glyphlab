@@ -13,6 +13,8 @@ glyphlab-service = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "fontbakery>=1.1,<1.2",
+    "jsonschema>=4",
     "hypothesis>=6.100",
     "mypy>=1.14",
     "pre-commit>=4",
@@ -37,3 +39,7 @@ files = ["packages/core/src"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]
+
+[[tool.mypy.overrides]]
+module = ["fontTools.*"]
+ignore_missing_imports = true

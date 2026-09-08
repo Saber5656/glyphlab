@@ -2,11 +2,14 @@
 name = "glyphlab"
 version = "0.1.0.dev0"
 requires-python = ">=3.11"
-dependencies = ["defusedxml>=0.7.1", "pydantic>=2.7"]
+dependencies = ["fonttools[woff]>=4.63", "defusedxml>=0.7.1", "pydantic>=2.7"]
 
 [project.optional-dependencies]
 trace = []
+qa = ["fontbakery>=1.1,<1.2"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project.entry-points."glyphlab.completers"]
