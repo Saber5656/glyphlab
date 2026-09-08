@@ -23,7 +23,7 @@ Environment variables:
 | `E2E_BASE_URL`      | `http://localhost:8080`  | Real service origin, optionally Vite proxy for debugging      |
 | `E2E_API_URL`       | `E2E_BASE_URL`           | Health endpoint origin when the UI uses a separate Vite proxy |
 | `E2E_DATA_DIR`      | `../e2e-data` from webui | Bind mount containing the service's `store/projects`          |
-| `E2E_PYTHON`        | `python3`                | Python with the repository core/test dependencies             |
+| `E2E_PYTHON`        | `../.venv/bin/python`    | Python with the repository core/test dependencies             |
 | `E2E_FAILURE_PROBE` | unset                    | Select only the deliberately failing artifact diagnostic      |
 
 Two serial tests share one project per browser: the main journey and upload errors plus

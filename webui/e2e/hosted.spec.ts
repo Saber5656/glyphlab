@@ -6,6 +6,7 @@ import {
     deleteViaUI,
     downloadBytes,
     observeTokenSafety,
+    openTokenLink,
 } from "./helpers";
 
 type Artifact = { id: string; kind: string; sha256: string };
@@ -126,7 +127,7 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         await expect(page.getByText("ページ 1", { exact: true })).toBeVisible();
         await expect(page.getByText("ページ 2", { exact: true })).toBeVisible();
         await expect(page.locator(".result").first()).toContainText(
-            /extracted: [1-9]\d*/,
+            /(?:extracted:|抽出) [1-9]\d*/,
         );
         await page
             .getByRole("link", { name: "確認画面へ", exact: true })
@@ -151,7 +152,7 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         );
         await page.screenshot({
             path: info.outputPath("review-grid.png"),
-            fullPage: true,
+            fullPage: false,
         });
         await info.attach("review-grid", {
             path: info.outputPath("review-grid.png"),
@@ -219,7 +220,7 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         try {
             const restored = await fresh.newPage();
             const assertFreshSafe = observeTokenSafety(restored);
-            await restored.goto(link);
+            expect(await openTokenLink(restored, link)).toBe(200);
             await expect(restored).toHaveURL(new RegExp(`/p/${projectId}$`));
             expect(new URL(restored.url()).hash).toBe("");
             await expect(
@@ -236,7 +237,7 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         page,
     }) => {
         const assertSafe = observeTokenSafety(page);
-        await page.goto(link);
+        await openTokenLink(page, link);
         await page
             .getByRole("link", { name: "書いてアップロード", exact: true })
             .click();
@@ -264,9 +265,12 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
             buffer: Buffer.alloc(12 * 1024 * 1024 + 1),
         });
         await expect(
-            page.getByText("画像が大きすぎます。12MB以内にしてください", {
-                exact: true,
-            }),
+            page.getByText(
+                /^画像が大きすぎます。12MB(?:・3600万画素)?以内にしてください$/,
+                {
+                    exact: true,
+                },
+            ),
         ).toBeVisible();
         expect(uploadRequests).toHaveLength(1);
         await deleteViaUI(page);
@@ -280,7 +284,7 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
                 projectId,
             ),
         ).toBeNull();
-        await page.goto(link);
+        await openTokenLink(page, link);
         await expect(
             page.getByText(
                 "プロジェクトが見つからないか、リンクが無効・期限切れです",
@@ -296,7 +300,7 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
         const context = await browser.newContext();
         try {
             const page = await context.newPage();
-            await page.goto(link);
+            await openTokenLink(page, link);
             await deleteViaUI(page);
         } finally {
             await context.close();

@@ -33,7 +33,7 @@ export async function corpusFor(
     const path = info.outputPath("template.pdf");
     await pdf.saveAs(path);
     await execute(
-        process.env.E2E_PYTHON ?? "python3",
+        process.env.E2E_PYTHON ?? resolve("../.venv/bin/python"),
         [
             resolve("e2e/generate-corpus.py"),
             "--data",
@@ -57,4 +57,36 @@ export async function deleteViaUI(page: Page) {
     page.once("dialog", (dialog) => void dialog.accept());
     await page.getByRole("button", { name: "今すぐ削除", exact: true }).click();
     await expect(page).toHaveURL(/\/$/);
+}
+
+export async function openTokenLink(page: Page, link: string) {
+    const projectPath = new URL(link).pathname.replace("/p/", "/api/projects/");
+    for (let attempt = 0; ; attempt++) {
+        const responseEvent = page.waitForResponse(
+            (response) =>
+                response.request().method() === "GET" &&
+                new URL(response.url()).pathname === projectPath,
+        );
+        if (attempt) await page.reload();
+        else await page.goto(link);
+        const response = await responseEvent;
+        if (response.status() !== 429) return response.status();
+        const seconds = Number(response.headers()["retry-after"]);
+        if (
+            attempt >= 2 ||
+            !Number.isFinite(seconds) ||
+            seconds <= 0 ||
+            seconds > 90
+        )
+            throw new Error(
+                "Project view quota cannot recover within the browser acceptance budget",
+            );
+        const deadline = Date.now() + seconds * 1000;
+        await expect
+            .poll(() => Date.now(), {
+                timeout: seconds * 1000 + 3000,
+                intervals: [1000],
+            })
+            .toBeGreaterThanOrEqual(deadline);
+    }
 }
