@@ -182,10 +182,11 @@ export async function uploadBatchWithRateLimit(page: Page, projectId: string, fi
         for (const [index, file] of files.entries()) {
             const item = page.locator(".upload-item").filter({ hasText: basename(file) });
             if (initial[index].response.status() === 429)
-                await expect(item.getByText("E_RATE_LIMITED", { exact: true })).toBeVisible();
+                await expect(item.getByText("アクセスが集中しています。しばらく待って再試行してください", { exact: true })).toBeVisible();
             await submitWithRateLimit(page, path, 202,
                 () => item.getByRole("button", { name: "再試行", exact: true }).click(),
                 "POST", initial[index]);
+            await expect(item.locator("small[aria-live]")).toHaveText("完了", { timeout: 120_000 });
         }
         expect(maximumActive, "Batch uploads must use the sequential queue").toBe(1);
         expect(responses.filter(({ response }) => response.status() === 202),
