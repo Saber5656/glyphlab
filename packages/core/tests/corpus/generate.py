@@ -66,7 +66,9 @@ def generate_corpus(
                     empty.append(cp)
                     continue
                 x0, y0, x1, y1 = cell_box_px(page, cell.row, cell.col)
-                font = ImageFont.truetype(str(FONT), 260)
+                # Single-character stamps do not need shaping. Pillow's default
+                # switches to RAQM when the host provides libraqm, shifting ink.
+                font = ImageFont.truetype(str(FONT), 260, layout_engine=ImageFont.Layout.BASIC)
                 box = font.getbbox(chr(cell.codepoint))
                 glyph = Image.new("L", (box[2] - box[0] + 12, box[3] - box[1] + 12), 255)
                 ImageDraw.Draw(glyph).text(

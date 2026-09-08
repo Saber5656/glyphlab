@@ -9,7 +9,7 @@ from glyphlab.ingest.decode import decode_scan, sniff_format
 from glyphlab.template import generate_template
 from glyphlab.template.layout import cell_box_px
 from glyphlab.template.sidecar import read_sidecar
-from PIL import Image
+from PIL import Image, ImageFont
 
 from .generate import generate_corpus
 
@@ -53,7 +53,11 @@ def test_deterministic_manifests_and_valid_images(artifacts, tmp_path, profile):
     assert runs[0] == runs[1]
 
 
-def test_clean_golden_crops(artifacts, tmp_path):
+@pytest.mark.parametrize("raqm_available", [False, True])
+def test_clean_golden_crops(artifacts, tmp_path, monkeypatch, raqm_available):
+    # Pillow selects a different default layout when the host exposes libraqm.
+    # Corpus pixels must stay stable regardless of that optional dependency.
+    monkeypatch.setattr(ImageFont.core, "HAVE_RAQM", raqm_available)
     template, sidecar = artifacts
     generate_corpus(template.pdf_path, sidecar, "clean-scan", [0, 1], 42, tmp_path)
     for cp, label in [(65, "A"), (120, "x")]:
