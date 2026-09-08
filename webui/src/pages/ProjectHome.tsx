@@ -1,3 +1,4 @@
+import { glyphSvgCache } from "../lib/svgCache";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -10,11 +11,12 @@ export default function ProjectHome() {
     const { projectId = "" } = useParams();
     const navigate = useNavigate();
     const client = useQueryClient();
-    const [deleted, setDeleted] = useState(false);
+    const [downloadError, setDownloadError] = useState<string>();
+    const [downloading, setDownloading] = useState(false);
     const summary = useQuery({
         queryKey: ["summary", projectId],
-        queryFn: () =>
-            apiFetch<Summary>(`/projects/${projectId}`, { projectId }),
+        queryFn: ({ signal }) =>
+            apiFetch<Summary>(`/projects/${projectId}`, { projectId, signal }),
     });
     const deletion = useMutation({
         mutationFn: () =>
@@ -24,9 +26,11 @@ export default function ProjectHome() {
             }),
         onSuccess: () => {
             clearToken(projectId);
-            setDeleted(true);
-            client.clear();
-            navigate("/");
+            client.removeQueries({
+                predicate: (query) => query.queryKey.includes(projectId),
+            });
+            glyphSvgCache.clear(`${projectId}:`);
+            navigate("/", { state: { deleted: true } });
         },
     });
     if (summary.isLoading) return <p className="loading">{t("loading")}</p>;
@@ -48,16 +52,28 @@ export default function ProjectHome() {
     const data = summary.data!;
     const done = data.counts.auto + data.counts.accepted + data.counts.rejected;
     async function template() {
-        const result = await downloadBlob(
-            `/projects/${projectId}/template.pdf`,
-            projectId,
-        );
-        const url = URL.createObjectURL(result.blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = result.filename ?? "template.pdf";
-        anchor.click();
-        URL.revokeObjectURL(url);
+        setDownloading(true);
+        setDownloadError(undefined);
+        try {
+            const result = await downloadBlob(
+                `/projects/${projectId}/template.pdf`,
+                projectId,
+            );
+            const url = URL.createObjectURL(result.blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = result.filename ?? "template.pdf";
+            anchor.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            setDownloadError(
+                errorText(
+                    error instanceof ApiError ? error.code : "E_INTERNAL",
+                ),
+            );
+        } finally {
+            setDownloading(false);
+        }
     }
     return (
         <section>
@@ -68,6 +84,7 @@ export default function ProjectHome() {
                     <p>{data.family_name}</p>
                 </div>
                 <button
+                    disabled={deletion.isPending}
                     className="text-button danger"
                     onClick={() => {
                         if (window.confirm(t("deleteConfirm")))
@@ -77,7 +94,19 @@ export default function ProjectHome() {
                     {t("deleteNow")}
                 </button>
             </div>
-            <div className="coverage">
+            <p className="notice">
+                {t("expires", {
+                    date: new Date(data.expires_at).toLocaleString("ja-JP"),
+                })}
+            </p>
+            <div
+                className="coverage"
+                role="progressbar"
+                aria-label={t("upload")}
+                aria-valuenow={done}
+                aria-valuemin={0}
+                aria-valuemax={data.charset.drawn}
+            >
                 <strong>
                     {done} / {data.charset.drawn}
                 </strong>
@@ -96,6 +125,7 @@ export default function ProjectHome() {
                     </div>
                     <button
                         className="button secondary"
+                        disabled={downloading}
                         onClick={() => void template()}
                     >
                         {t("download")}
@@ -132,7 +162,7 @@ export default function ProjectHome() {
                     </div>
                 </Link>
                 <Link
-                    className={`card checklist-item ${data.counts.accepted + data.counts.auto ? "complete" : ""}`}
+                    className="card checklist-item"
                     to={`/p/${projectId}/build`}
                 >
                     <span>04</span>
@@ -142,7 +172,20 @@ export default function ProjectHome() {
                     </div>
                 </Link>
             </div>
-            {deleted && <p className="notice">{t("deleted")}</p>}
+            {downloadError && (
+                <p role="alert" className="notice error">
+                    {downloadError}
+                </p>
+            )}
+            {deletion.error && (
+                <p role="alert" className="notice error">
+                    {errorText(
+                        deletion.error instanceof ApiError
+                            ? deletion.error.code
+                            : "E_INTERNAL",
+                    )}
+                </p>
+            )}
         </section>
     );
 }

@@ -1,15 +1,22 @@
+import { glyphSvgCache } from "../lib/svgCache";
 import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { apiFetch, ApiError } from "../lib/api";
-import { isToken, saveToken } from "../lib/token";
+import {
+    isToken,
+    isProjectId,
+    parseProjectLink,
+    saveToken,
+} from "../lib/token";
 import { t, errorText } from "../i18n/ja";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Created, Meta } from "../generated/types";
 
 const validName = (value: string) => {
     const n = value.normalize("NFC");
     return (
-        n.length >= 1 &&
-        n.length <= 64 &&
+        Array.from(n).length >= 1 &&
+        Array.from(n).length <= 64 &&
         n === n.trim() &&
         !/[\u0000-\u001f\u007f-\u009f]/.test(n)
     );
@@ -17,15 +24,18 @@ const validName = (value: string) => {
 const validFamily = (value: string) =>
     /^[A-Za-z0-9][A-Za-z0-9 \-]{0,30}$/.test(value);
 
-function TokenPanel({
+export function TokenPanel({
     created,
     onClose,
+    persisted = true,
 }: {
     created: Created;
     onClose: () => void;
+    persisted?: boolean;
 }) {
     const link = `${window.location.origin}/p/${created.project_id}#t=${created.token}`;
     const [copied, setCopied] = useState(false);
+    const [copyError, setCopyError] = useState(false);
     const [canClose, setCanClose] = useState(false);
     useEffect(() => {
         const timer = window.setTimeout(() => setCanClose(true), 5000);
@@ -33,16 +43,54 @@ function TokenPanel({
     }, []);
     return (
         <div className="modal-backdrop">
-            <section className="modal" role="dialog" aria-modal="true">
+            <section
+                className="modal"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="save-link-title"
+                onKeyDown={(event) => {
+                    if (event.key !== "Tab") return;
+                    const controls = Array.from(
+                        event.currentTarget.querySelectorAll<HTMLElement>(
+                            "input, button:not(:disabled)",
+                        ),
+                    );
+                    const first = controls[0],
+                        last = controls[controls.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last.focus();
+                    } else if (
+                        !event.shiftKey &&
+                        document.activeElement === last
+                    ) {
+                        event.preventDefault();
+                        first.focus();
+                    }
+                }}
+            >
                 <p className="eyebrow">{t("saveToken")}</p>
-                <h2>{t("tokenWarning")}</h2>
-                <input readOnly value={link} aria-label={t("sharedLink")} />
+                <h2 id="save-link-title">{t("tokenWarning")}</h2>
+                <p>{t(persisted ? "tokenAutosaved" : "tokenSessionOnly")}</p>
+                {copyError && <p role="alert">{t("copyFailed")}</p>}
+                <input
+                    autoFocus
+                    readOnly
+                    value={link}
+                    aria-label={t("sharedLink")}
+                />
                 <div className="actions">
                     <button
                         className="button"
-                        onClick={() => {
-                            void navigator.clipboard.writeText(link);
-                            setCopied(true);
+                        onClick={async () => {
+                            setCopyError(false);
+                            try {
+                                await navigator.clipboard.writeText(link);
+                                setCopied(true);
+                            } catch {
+                                setCopied(false);
+                                setCopyError(true);
+                            }
                         }}
                     >
                         {copied ? t("copied") : t("copyLink")}
@@ -62,8 +110,20 @@ function TokenPanel({
 
 export default function Landing() {
     const navigate = useNavigate();
-    const [meta, setMeta] = useState<Meta>();
+    const client = useQueryClient();
+    const location = useLocation();
+    const [deleted] = useState(
+        Boolean((location.state as { deleted?: boolean } | null)?.deleted),
+    );
+    const [pending, setPending] = useState(false);
+    const metaQuery = useQuery({
+        queryKey: ["meta"],
+        queryFn: ({ signal }) => apiFetch<Meta>("/meta", { signal }),
+        retry: false,
+    });
+    const meta = metaQuery.data;
     const [created, setCreated] = useState<Created>();
+    const [persisted, setPersisted] = useState(true);
     const [name, setName] = useState("");
     const [familyName, setFamilyName] = useState("");
     const [charset, setCharset] = useState("ja-basic-v1");
@@ -72,17 +132,25 @@ export default function Landing() {
     const [openToken, setOpenToken] = useState("");
     const [error, setError] = useState("");
     useEffect(() => {
-        void apiFetch<Meta>("/meta")
-            .then(setMeta)
-            .catch(() => undefined);
-    }, []);
+        if (
+            meta?.charsets.length &&
+            !meta.charsets.some((item) => item.id === charset)
+        )
+            setCharset(meta.charsets[0].id);
+    }, [meta, charset]);
+    useEffect(() => {
+        if (deleted)
+            navigate(location.pathname, { replace: true, state: null });
+    }, [deleted, location.pathname, navigate]);
     async function create(event: FormEvent) {
         event.preventDefault();
         setError("");
+        if (pending || !meta) return;
         if (!validName(name) || !validFamily(familyName)) {
             setError(t("inputInvalid"));
             return;
         }
+        setPending(true);
         try {
             const result = await apiFetch<Created>("/projects", {
                 method: "POST",
@@ -92,7 +160,7 @@ export default function Landing() {
                     charset_id: charset,
                 },
             });
-            saveToken(result.project_id, result.token);
+            setPersisted(saveToken(result.project_id, result.token));
             setCreated(result);
         } catch (cause) {
             setError(
@@ -100,23 +168,30 @@ export default function Landing() {
                     ? errorText(cause.code)
                     : errorText("E_INTERNAL"),
             );
+        } finally {
+            setPending(false);
         }
     }
     function open(event: FormEvent) {
         event.preventDefault();
-        const match = openValue.match(
-            /\/p\/([0-9a-fA-F-]{36})#t=(glp_[A-Za-z0-9_-]{43})$/,
-        );
-        const projectId = match?.[1] ?? openId.trim();
-        const token = match?.[2] ?? openToken.trim();
+        setError("");
+        const parsed = openValue.trim()
+            ? parseProjectLink(openValue.trim())
+            : null;
+        const projectId = parsed?.projectId ?? openId.trim().toLowerCase();
+        const token = parsed?.token ?? openToken.trim();
         if (
-            !projectId ||
-            !/^[0-9a-fA-F-]{36}$/.test(projectId) ||
-            !/^glp_[A-Za-z0-9_-]{43}$/.test(token)
+            (openValue.trim() && !parsed) ||
+            !isProjectId(projectId) ||
+            !isToken(token)
         ) {
             setError(t("linkInvalid"));
             return;
         }
+        client.removeQueries({
+            predicate: (query) => query.queryKey.includes(projectId),
+        });
+        glyphSvgCache.clear(`${projectId}:`);
         saveToken(projectId, token);
         navigate(`/p/${projectId}`);
     }
@@ -128,7 +203,13 @@ export default function Landing() {
                 </Link>
                 <Link to="/privacy">{t("privacy")}</Link>
             </header>
-            <main className="shell landing">
+            <main
+                className="shell landing"
+                ref={(node) => {
+                    if (created) node?.setAttribute("inert", "");
+                    else node?.removeAttribute("inert");
+                }}
+            >
                 <section className="hero">
                     <p className="eyebrow">HANDWRITING → TYPEFACE</p>
                     <h1>{t("tagline")}</h1>
@@ -139,7 +220,7 @@ export default function Landing() {
                         <span>{t("stepReceive")}</span>
                     </div>
                     <small>
-                        {t("retention", { days: meta?.retention_days ?? 14 })}
+                        {meta && t("retention", { days: meta.retention_days })}
                     </small>
                 </section>
                 <div className="columns">
@@ -152,7 +233,6 @@ export default function Landing() {
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     required
-                                    maxLength={64}
                                 />
                             </label>
                             <label>
@@ -166,22 +246,16 @@ export default function Landing() {
                                     maxLength={31}
                                 />
                             </label>
+                            <p>
+                                <small>{t("familyHelp")}</small>
+                            </p>
                             <label>
                                 {t("charset")}
                                 <select
                                     value={charset}
                                     onChange={(e) => setCharset(e.target.value)}
                                 >
-                                    {(
-                                        meta?.charsets ?? [
-                                            {
-                                                id: "ja-basic-v1",
-                                                encoded: 278,
-                                                drawn: 276,
-                                                pages: 6,
-                                            },
-                                        ]
-                                    ).map((item) => (
+                                    {(meta?.charsets ?? []).map((item) => (
                                         <option key={item.id} value={item.id}>
                                             {item.id}（
                                             {t("pageCount", {
@@ -193,7 +267,11 @@ export default function Landing() {
                                     ))}
                                 </select>
                             </label>
-                            <button className="button" type="submit">
+                            <button
+                                className="button"
+                                type="submit"
+                                disabled={pending || !meta}
+                            >
                                 {t("submit")}
                             </button>
                         </form>
@@ -238,6 +316,23 @@ export default function Landing() {
                         </form>
                     </section>
                 </div>
+                {deleted && (
+                    <p role="status" className="notice">
+                        {t("deleted")}
+                    </p>
+                )}
+                {metaQuery.error && (
+                    <div className="notice error" role="alert">
+                        {errorText(
+                            metaQuery.error instanceof ApiError
+                                ? metaQuery.error.code
+                                : "E_INTERNAL",
+                        )}{" "}
+                        <button onClick={() => void metaQuery.refetch()}>
+                            {t("retry")}
+                        </button>
+                    </div>
+                )}
                 {error && (
                     <p className="notice error" role="alert">
                         {error}
@@ -250,6 +345,7 @@ export default function Landing() {
             {created && (
                 <TokenPanel
                     created={created}
+                    persisted={persisted}
                     onClose={() => navigate(`/p/${created.project_id}`)}
                 />
             )}

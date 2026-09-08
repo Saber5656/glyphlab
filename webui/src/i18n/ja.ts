@@ -39,6 +39,20 @@ export const warnings = {
 } as const;
 export const ja = {
     brand: "glyphlab",
+    tokenSessionOnly: "このブラウザには保存できませんでした。閉じる前にリンクをコピーして保管してください",
+    tokenAutosaved: "このブラウザにもアクセス情報を保存しました",
+    tokenNeeded: "保存したリンク、またはアクセストークンを入力してください",
+    familyHelp: "半角英数字・スペース・ハイフンで31文字以内。先頭は英数字にしてください",
+    copyFailed: "コピーできませんでした。リンクを選択して保存してください",
+    expires: "有効期限: {date}",
+    uploadTotal: "すべてのページを取り込むと{count}字",
+    uploadCounts: "抽出 {extracted} / 空欄 {empty} / スキップ {skipped} / 失敗 {failed}",
+    deduplicated: "アップロード済みのページです",
+    queueFull: "待機・処理中の画像は最大6ファイルです",
+    technicalCode: "エラーコード",
+    pollRetry: "処理状況を再取得",
+    uploadProgress: "アップロード {percent}%",
+
     tagline: "手書き文字から、自分だけのフォントを作る",
     create: "プロジェクトを作る",
     open: "既存のプロジェクトを開く",
