@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import ts from "typescript";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -221,10 +223,61 @@ it("rejects invalid name and non-ASCII family before project creation", async ()
     await screen.findByText(t("retention", { days: 3 }));
     await userEvent.type(screen.getByLabelText(t("name")), " leading");
     await userEvent.type(screen.getByLabelText(t("familyName")), "日本語");
-    await userEvent.click(screen.getByRole("button", { name: t("submit") }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-        t("inputInvalid"),
+    expect(screen.getByLabelText(t("name"))).toHaveAttribute(
+        "aria-invalid",
+        "true",
     );
+    expect(screen.getByLabelText(t("familyName"))).toHaveAttribute(
+        "aria-invalid",
+        "true",
+    );
+    expect(screen.getByRole("button", { name: t("submit") })).toBeDisabled();
     expect(posts).toBe(0);
     expect(screen.getByText(t("familyHelp"))).toBeVisible();
+});
+
+it("validates fields during editing without initial error noise and enables valid submission", async () => {
+    mount();
+    await screen.findByText(t("retention", { days: 3 }));
+    const name = screen.getByLabelText(t("name"));
+    const family = screen.getByLabelText(t("familyName"));
+    const submit = screen.getByRole("button", { name: t("submit") });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(name).not.toHaveAttribute("aria-invalid", "true");
+    expect(submit).toBeDisabled();
+    await userEvent.type(name, " leading");
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent(t("nameInvalid"));
+    await userEvent.clear(name);
+    await userEvent.type(name, "Café");
+    await userEvent.type(family, "My Font");
+    expect(name).toHaveAttribute("aria-invalid", "false");
+    expect(family).toHaveAttribute("aria-invalid", "false");
+    expect(submit).toBeEnabled();
+    await userEvent.clear(family);
+    expect(family).toHaveAttribute("aria-invalid", "true");
+    expect(submit).toBeDisabled();
+});
+it("centralizes static page copy including ASCII JSX text", () => {
+    for (const filename of ["Landing.tsx", "ProjectHome.tsx", "Upload.tsx"]) {
+        const source = readFileSync(new URL(filename, import.meta.url), "utf8");
+        const tree = ts.createSourceFile(
+            filename,
+            source,
+            ts.ScriptTarget.Latest,
+            true,
+            ts.ScriptKind.TSX,
+        );
+        const literals: string[] = [];
+        function visit(node: ts.Node) {
+            if (ts.isJsxText(node) && node.text.trim()) {
+                const text = node.text.trim();
+                // Numbered checklist steps and count separators are structural notation.
+                if (!/^[0-9\s/]+$/.test(text)) literals.push(text);
+            }
+            ts.forEachChild(node, visit);
+        }
+        visit(tree);
+        expect(literals, filename).toEqual([]);
+    }
 });

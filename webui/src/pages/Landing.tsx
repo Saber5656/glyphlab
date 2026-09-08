@@ -126,6 +126,10 @@ export default function Landing() {
     const [persisted, setPersisted] = useState(true);
     const [name, setName] = useState("");
     const [familyName, setFamilyName] = useState("");
+    const [nameEdited, setNameEdited] = useState(false);
+    const [familyEdited, setFamilyEdited] = useState(false);
+    const nameValid = validName(name);
+    const familyValid = validFamily(familyName);
     const [charset, setCharset] = useState("ja-basic-v1");
     const [openValue, setOpenValue] = useState("");
     const [openId, setOpenId] = useState("");
@@ -199,7 +203,7 @@ export default function Landing() {
         <>
             <header className="topbar">
                 <Link to="/" className="brand">
-                    glyphlab
+                    {t("brand")}
                 </Link>
                 <Link to="/privacy">{t("privacy")}</Link>
             </header>
@@ -211,7 +215,7 @@ export default function Landing() {
                 }}
             >
                 <section className="hero">
-                    <p className="eyebrow">HANDWRITING → TYPEFACE</p>
+                    <p className="eyebrow">{t("heroEyebrow")}</p>
                     <h1>{t("tagline")}</h1>
                     <p>{t("heroDescription")}</p>
                     <div className="steps">
@@ -231,22 +235,59 @@ export default function Landing() {
                                 {t("name")}
                                 <input
                                     value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    onChange={(e) => {
+                                        setName(e.target.value);
+                                        setNameEdited(true);
+                                    }}
+                                    aria-invalid={
+                                        nameEdited ? !nameValid : undefined
+                                    }
+                                    aria-describedby={
+                                        nameEdited && !nameValid
+                                            ? "name-error"
+                                            : undefined
+                                    }
                                     required
                                 />
                             </label>
+                            {nameEdited && !nameValid && (
+                                <p
+                                    id="name-error"
+                                    role="alert"
+                                    className="notice error"
+                                >
+                                    {t("nameInvalid")}
+                                </p>
+                            )}
                             <label>
                                 {t("familyName")}
                                 <input
                                     value={familyName}
-                                    onChange={(e) =>
-                                        setFamilyName(e.target.value)
+                                    onChange={(e) => {
+                                        setFamilyName(e.target.value);
+                                        setFamilyEdited(true);
+                                    }}
+                                    aria-invalid={
+                                        familyEdited ? !familyValid : undefined
                                     }
+                                    aria-describedby="family-help"
                                     required
                                     maxLength={31}
                                 />
                             </label>
-                            <p>
+                            <p
+                                id="family-help"
+                                role={
+                                    familyEdited && !familyValid
+                                        ? "alert"
+                                        : undefined
+                                }
+                                className={
+                                    familyEdited && !familyValid
+                                        ? "notice error"
+                                        : undefined
+                                }
+                            >
                                 <small>{t("familyHelp")}</small>
                             </p>
                             <label>
@@ -257,12 +298,11 @@ export default function Landing() {
                                 >
                                     {(meta?.charsets ?? []).map((item) => (
                                         <option key={item.id} value={item.id}>
-                                            {item.id}（
-                                            {t("pageCount", {
+                                            {t("charsetOption", {
+                                                id: item.id,
                                                 count: item.drawn,
                                                 pages: item.pages,
                                             })}
-                                            ）
                                         </option>
                                     ))}
                                 </select>
@@ -270,7 +310,12 @@ export default function Landing() {
                             <button
                                 className="button"
                                 type="submit"
-                                disabled={pending || !meta}
+                                disabled={
+                                    pending ||
+                                    !meta ||
+                                    !nameValid ||
+                                    !familyValid
+                                }
                             >
                                 {t("submit")}
                             </button>

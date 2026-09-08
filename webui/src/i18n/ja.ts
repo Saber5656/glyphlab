@@ -39,6 +39,9 @@ export const warnings = {
 } as const;
 export const ja = {
     brand: "glyphlab",
+    heroEyebrow: "手書きからフォントへ",
+    charsetOption: "{id}（{count}字・{pages}ページ）",
+    nameInvalid: "前後の空白・制御文字を含まない1〜64文字で入力してください",
     tokenSessionOnly: "このブラウザには保存できませんでした。閉じる前にリンクをコピーして保管してください",
     tokenAutosaved: "このブラウザにもアクセス情報を保存しました",
     tokenNeeded: "保存したリンク、またはアクセストークンを入力してください",
