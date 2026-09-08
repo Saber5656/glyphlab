@@ -113,9 +113,7 @@ export async function submitWithRateLimit(
             return;
         }
         await expect(
-            page.getByRole("alert").filter({
-                hasText: "アクセスが集中しています。しばらく待って再試行してください",
-            }),
+            page.getByText("アクセスが集中しています。しばらく待って再試行してください", { exact: true }).first(),
         ).toBeVisible();
         const seconds = Number(response.headers()["retry-after"]);
         if (
