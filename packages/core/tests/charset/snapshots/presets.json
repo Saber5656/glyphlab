@@ -1,0 +1,14 @@
+{
+  "ascii": {
+    "version": 1,
+    "sha256": "eac0c8eff213a63656b49d37e6334c7c4f1d489d83eac9eb52230cab10ca0048"
+  },
+  "kana": {
+    "version": 1,
+    "sha256": "f9c32a3559e97004fdc489b482d0180a3190044849b053dbb7e079d68723b6e1"
+  },
+  "ja-basic-v1": {
+    "version": 1,
+    "sha256": "c44d8ce3c94daf52a5b7e466057135e3abe51603e1277edeb3fd55d577af326e"
+  }
+}
