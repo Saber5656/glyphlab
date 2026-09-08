@@ -2,14 +2,17 @@
 
 Run against the real compose stack; no API mocks or synthetic job completions are used.
 The browser creates its project and downloads its own template. The Python helper then
-reads that project's internal sidecar from the bind mount and stamps two real scan pages.
+reads that project's internal sidecar as the existing Compose app user and stamps two real
+scan pages. This read-only export preserves the production artifact mode 0600 across Linux
+and Docker Desktop. It verifies that `E2E_DATA_DIR` matches the app's `/data` bind mount;
+a missing stack, incorrect bind, or failed read is an error.
 Generating the corpus after UI creation avoids a second setup-only project and also proves
 that the uploaded scans match the newly printed template.
 
 From the repository root, after installing the locked Python and Node dependencies:
 
 ```bash
-mkdir -p e2e-data
+install -d -m 0777 e2e-data
 docker compose -f deploy/docker-compose.yml -f deploy/compose.e2e.yml up -d --build --wait
 cd webui
 npx playwright install --with-deps chromium webkit
@@ -23,6 +26,7 @@ Environment variables:
 | `E2E_BASE_URL`      | `http://localhost:8080`  | Real service origin, optionally Vite proxy for debugging      |
 | `E2E_API_URL`       | `E2E_BASE_URL`           | Health endpoint origin when the UI uses a separate Vite proxy |
 | `E2E_DATA_DIR`      | `../e2e-data` from webui | Bind mount containing the service's `store/projects`          |
+| `E2E_COMPOSE_PROJECT` | Compose default / `COMPOSE_PROJECT_NAME` | Explicit project name for an isolated acceptance stack |
 | `E2E_PYTHON`        | `../.venv/bin/python`    | Python with the repository core/test dependencies             |
 | `E2E_FAILURE_PROBE` | unset                    | Select only the deliberately failing artifact diagnostic      |
 
