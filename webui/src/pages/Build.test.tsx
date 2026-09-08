@@ -115,6 +115,13 @@ describe("Build page", () => {
         vi.unstubAllGlobals();
     });
 
+    it("shows an artifact-list error rather than an empty history", async () => {
+        commonHandlers();
+        server.use(http.get("http://localhost/api/projects/:projectId/artifacts", () => HttpResponse.json({ error: { code: "E_NOT_FOUND", message: "missing" } }, { status: 404 })));
+        renderBuild();
+        expect(await screen.findByRole("alert")).toHaveTextContent("プロジェクトが見つからない");
+    });
+
     it("triggers a build, polls it, and renders three preview sizes", async () => {
         commonHandlers([artifact("woff-1", "woff2")]);
         server.use(

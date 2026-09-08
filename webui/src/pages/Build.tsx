@@ -150,7 +150,7 @@ export default function Build() {
         (artifact) => artifact.kind === "qa_json",
     );
     const qaReport = useQuery({
-        queryKey: ["qa-report", qaArtifact?.id],
+        queryKey: ["qa-report", projectId, qaArtifact?.id],
         enabled:
             job.data?.status === "failed" &&
             job.data.error_code === "E_QA_FAILED" &&
@@ -205,6 +205,7 @@ export default function Build() {
                         : t("build")}
                 </button>
             </div>
+            {(artifacts.error || glyphs.error || job.error || qaReport.error) && <p role="alert" className="notice error">{errorText((artifacts.error || glyphs.error || job.error || qaReport.error) instanceof ApiError ? ((artifacts.error || glyphs.error || job.error || qaReport.error) as ApiError).code : "E_INTERNAL")}</p>}
             {info && <div className="notice">{info}</div>}
             {build.error && !info && (
                 <p className="notice error">
