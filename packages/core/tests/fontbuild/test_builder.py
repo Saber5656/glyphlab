@@ -46,3 +46,15 @@ def test_missing_and_unknown(golden_inputs, tmp_path):
     with pytest.raises(GlyphlabError) as error:
         build_font(config, glyphs, charset, tmp_path)
     assert error.value.code == "E_VALIDATION"
+
+
+def test_windows_metrics_cover_deep_ink(golden_inputs, tmp_path):
+    from support.font_fixtures import box
+
+    config, glyphs, charset = golden_inputs
+    glyphs[65] = (box(y0=-217, y1=950), 600)
+    font = TTFont(build_font(config, glyphs, charset, tmp_path).ttf_path)
+    assert font["OS/2"].usWinAscent == 950
+    assert font["OS/2"].usWinDescent == 217
+    assert font["hhea"].ascent == 880
+    assert font["hhea"].descent == -120

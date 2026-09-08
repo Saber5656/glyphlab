@@ -47,3 +47,14 @@ def test_corruption(golden_font, golden_inputs, mutation, check):
     assert check in {
         f.check_id for f in run_structural_checks(path, charset, expected_for(charset, glyphs))
     }
+
+
+def test_format_12_must_match_coverage(golden_font, golden_inputs):
+    _, glyphs, charset = golden_inputs
+    font = TTFont(golden_font.ttf_path)
+    next(t for t in font["cmap"].tables if t.format == 12).cmap.pop(65)
+    font.save(golden_font.ttf_path)
+    assert any(
+        f.check_id == "structural/cmap"
+        for f in run_structural_checks(golden_font.ttf_path, charset, expected_for(charset, glyphs))
+    )

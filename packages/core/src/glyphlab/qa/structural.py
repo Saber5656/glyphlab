@@ -25,6 +25,11 @@ def run_structural_checks(
             cmap = font.getBestCmap() or {}
             if set(cmap) != expected.codepoints:
                 fail("cmap", "Character map differs from the selected charset coverage")
+            subtables = font["cmap"].tables
+            if not {4, 12}.issubset({t.format for t in subtables}) or any(
+                t.cmap != cmap for t in subtables if t.format in (4, 12)
+            ):
+                fail("cmap", "Required format 4 and 12 tables must agree")
             definitions = {c.codepoint: c for c in charset.chars}
             for cp, name in cmap.items():
                 advance = font["hmtx"][name][0]
@@ -52,8 +57,8 @@ def run_structural_checks(
                     "sTypoAscender": 880,
                     "sTypoDescender": -120,
                     "sTypoLineGap": 0,
-                    "usWinAscent": 880,
-                    "usWinDescent": 120,
+                    "usWinAscent": max(880, font["head"].yMax),
+                    "usWinDescent": max(120, -font["head"].yMin),
                     "fsType": 0,
                     "ulCodePageRange1": codepages,
                 },

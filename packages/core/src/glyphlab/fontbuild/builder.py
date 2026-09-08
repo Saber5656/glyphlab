@@ -97,12 +97,15 @@ def build_font(
         mac=False,
     )
     codepages = 1 | (1 << 17 if any(c.script_class != "latin" for c in charset.chars) else 0)
+    # Windows clipping bounds include all ink; line-layout metrics remain fixed.
+    ink_top = max((g.yMax for g in outlines.values() if g.numberOfContours), default=880)
+    ink_bottom = min((g.yMin for g in outlines.values() if g.numberOfContours), default=-120)
     builder.setupOS2(
         sTypoAscender=880,
         sTypoDescender=-120,
         sTypoLineGap=0,
-        usWinAscent=880,
-        usWinDescent=120,
+        usWinAscent=max(880, ink_top),
+        usWinDescent=max(120, -ink_bottom),
         fsType=0,
         ulCodePageRange1=codepages,
         ulCodePageRange2=0,
