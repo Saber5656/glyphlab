@@ -240,6 +240,7 @@ export default function Build() {
                 <section className="preview card">
                     <h2>{t("preview")}</h2>
                     <textarea
+                        aria-label={t("preview")}
                         value={sample}
                         onChange={(event) => setSample(event.target.value)}
                     />

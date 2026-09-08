@@ -73,3 +73,4 @@ footer { padding: 44px 0 0; color: #5e765f; font-size: .85rem; }
 .glyph-select { position: absolute; left: 4px; top: 4px; }
 .review-actions, .review-footer { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
 .review-footer { justify-content: space-between; }
+.glyph-cell.status-missing { border-style: dashed; border-color: #b4bdb5; }
