@@ -4,6 +4,11 @@ version = "0.1.0.dev0"
 requires-python = ">=3.11"
 dependencies = ["glyphlab", "glyphlab-service"]
 
+# opentype-sanitizer 9.2.0 still passes dry_run to copy_file in source builds.
+# Setuptools 81 removed it: https://setuptools.pypa.io/en/latest/history.html#v81-0-0
+[tool.uv]
+build-constraint-dependencies = ["setuptools<81"]
+
 [tool.uv.workspace]
 members = ["packages/core", "packages/service"]
 
@@ -26,6 +31,9 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.format]
+exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "S"]

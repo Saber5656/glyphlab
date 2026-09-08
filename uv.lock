@@ -951,6 +951,7 @@ test = [
     { name = "httpx" },
     { name = "moto", extra = ["s3"] },
     { name = "psutil" },
+    { name = "pypdfium2" },
     { name = "pytest" },
     { name = "schemathesis" },
 ]
@@ -967,6 +968,7 @@ requires-dist = [
     { name = "psutil", marker = "extra == 'test'", specifier = ">=6" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.8" },
+    { name = "pypdfium2", marker = "extra == 'test'", specifier = ">=4" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
     { name = "python-multipart", specifier = ">=0.0.20" },
     { name = "schemathesis", marker = "extra == 'test'", specifier = ">=4" },

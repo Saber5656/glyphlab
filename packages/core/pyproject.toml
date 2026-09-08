@@ -10,6 +10,7 @@ authors = [{name = "glyphlab contributors"}]
 keywords = ["font", "handwriting", "japanese", "kana"]
 classifiers = ["Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12", "Topic :: Text Processing :: Fonts"]
 dependencies = [
+    "brotli>=1.2",
     "defusedxml>=0.7.1",
     "fonttools[woff]>=4.63",
     "numpy>=2.4.6",
