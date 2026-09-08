@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import UUID
 
 from glyphlab.charset import CharsetSpec
+from glyphlab.errors import GlyphlabError
 
 from .layout import compute_layout
 from .pdf import render_pdf
@@ -19,6 +20,12 @@ class TemplateArtifacts:
 def generate_template(
     out_dir: Path, charset: CharsetSpec, template_id: UUID, project_name: str
 ) -> TemplateArtifacts:
+    if any(c in charset.charset_id for c in ("/", "\\", "\x00")):
+        raise GlyphlabError("E_VALIDATION", "Charset ID must be a safe filename component")
+    root = out_dir.resolve()
+    for filename in (f"{charset.charset_id}.pdf", "template.json"):
+        if not (out_dir / filename).resolve().is_relative_to(root):
+            raise GlyphlabError("E_VALIDATION", "Template output escapes its directory")
     out_dir.mkdir(parents=True, exist_ok=True)
     layout = compute_layout(charset)
     pdf_path = out_dir / f"{charset.charset_id}.pdf"
