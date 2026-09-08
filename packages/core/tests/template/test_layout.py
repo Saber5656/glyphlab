@@ -37,3 +37,38 @@ def test_sidecar_roundtrip_and_validation(tmp_path):
     path.write_text(json.dumps(payload))
     with pytest.raises(GlyphlabError):
         read_sidecar(path)
+
+
+def test_sidecar_honors_persisted_geometry(tmp_path):
+    from dataclasses import replace
+
+    charset = get_preset("ascii")
+    layout = compute_layout(charset)
+    pages = tuple(replace(p, grid_mm=replace(p.grid_mm, x0=13.0)) for p in layout.pages)
+    path = tmp_path / "old-layout.json"
+    write_sidecar(path, replace(layout, pages=pages), UUID(int=1), charset)
+    stored = read_sidecar(path, expected_charset=charset)
+    assert stored.pages[0].grid_mm.x0 == 13
+    assert cell_box_px(stored.pages[0], 0, 0)[0] > cell_box_px(layout.pages[0], 0, 0)[0]
+
+
+@pytest.mark.parametrize("mutation", ["marker", "foreign", "schema", "nonfinite", "outside"])
+def test_sidecar_tampering_rejected(tmp_path, mutation):
+    charset = get_preset("ascii")
+    path = tmp_path / "template.json"
+    write_sidecar(path, compute_layout(charset), UUID(int=1), charset)
+    payload = json.loads(path.read_text())
+    if mutation == "marker":
+        payload["pages"][0]["aruco_ids"][0] = 8
+    elif mutation == "foreign":
+        payload["charset_id"] = "kana"
+    elif mutation == "schema":
+        payload["schema"] = "unknown"
+    elif mutation == "nonfinite":
+        payload["pages"][0]["grid_mm"]["cell"] = float("nan")
+    else:
+        payload["pages"][0]["grid_mm"]["x0"] = 200
+    path.write_text(json.dumps(payload))
+    with pytest.raises(GlyphlabError) as error:
+        read_sidecar(path, expected_charset=charset)
+    assert error.value.code == "E_TEMPLATE_MISMATCH"
