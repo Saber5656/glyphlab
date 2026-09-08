@@ -11,7 +11,7 @@ dependencies = ["glyphlab", "fastapi>=0.115", "uvicorn>=0.34", "pydantic-setting
 
 [project.optional-dependencies]
 qa = ["glyphlab[qa]"]
-postgres = ["psycopg[binary]>=3.2"]
+postgres = ["psycopg[binary]>=3.3.5"]
 test = ["pytest>=8", "httpx>=0.28", "moto[s3]>=5", "schemathesis>=4", "psutil>=6", "pypdfium2>=4"]
 
 [project.scripts]
