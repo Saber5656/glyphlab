@@ -107,6 +107,7 @@ export async function submitWithRateLimit(
     action: () => Promise<void>,
     method: "POST" | "DELETE" | "GET" = "POST",
     initial?: { response: Response; receivedAt: number },
+    notice = "アクセスが集中しています。しばらく待って再試行してください",
 ) {
     for (let attempt = 0; ; attempt++) {
         let observed = attempt === 0 ? initial : undefined;
@@ -127,7 +128,7 @@ export async function submitWithRateLimit(
             return response;
         }
         await expect(
-            page.getByText("アクセスが集中しています。しばらく待って再試行してください", { exact: true }).first(),
+            page.getByText(notice, { exact: true }).first(),
         ).toBeVisible();
         const seconds = Number(response.headers()["retry-after"]);
         if (
@@ -194,5 +195,24 @@ export async function uploadBatchWithRateLimit(page: Page, projectId: string, fi
     } finally {
         page.off("request", requested);
         page.off("response", responded);
+    }
+}
+
+/** Listen throughout quota waits; start the bounded event assertion only after GET200. */
+export async function downloadWithRateLimit(
+    page: Page,
+    path: string,
+    action: () => Promise<void>,
+    notice?: string,
+): Promise<Download> {
+    const downloads: Download[] = [];
+    const received = (download: Download) => downloads.push(download);
+    page.on("download", received);
+    try {
+        await submitWithRateLimit(page, path, 200, action, "GET", undefined, notice);
+        await expect.poll(() => downloads.length).toBe(1);
+        return downloads[0];
+    } finally {
+        page.off("download", received);
     }
 }

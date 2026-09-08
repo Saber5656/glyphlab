@@ -5,6 +5,7 @@ import {
     corpusFor,
     deleteViaUI,
     downloadBytes,
+    downloadWithRateLimit,
     observeTokenSafety,
     openTokenLink,
     submitWithRateLimit,
@@ -99,11 +100,11 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
             .getByRole("button", { name: "保存したので閉じる", exact: true })
             .click();
         await expect(page).toHaveURL(new RegExp(`/p/${projectId}$`));
-        const pdfEvent = page.waitForEvent("download");
-        await page
-            .getByRole("button", { name: "ダウンロード", exact: true })
-            .click();
-        const pdf = await pdfEvent;
+        const pdf = await downloadWithRateLimit(
+            page,
+            `/api/projects/${projectId}/template.pdf`,
+            () => page.getByRole("button", { name: "ダウンロード", exact: true }).click(),
+        );
         expect((await downloadBytes(pdf)).subarray(0, 4).toString()).toBe(
             "%PDF",
         );
@@ -225,16 +226,18 @@ test.describe.serial("Japanese hosted journey and upload recovery", () => {
             path: info.outputPath("build-preview.png"),
             contentType: "image/png",
         });
-        const ttfEvent = page.waitForEvent("download");
-        await page
-            .locator(".artifact")
-            .filter({ hasText: /^ttf/ })
-            .getByRole("button", { name: "ダウンロード", exact: true })
-            .click();
-        const bytes = await downloadBytes(await ttfEvent);
         const listed = listings
             .flat()
             .find((artifact) => artifact.kind === "ttf");
+        expect(listed?.id).toBeTruthy();
+        const ttf = await downloadWithRateLimit(
+            page,
+            `/api/projects/${projectId}/artifacts/${listed!.id}`,
+            () => page.locator(".artifact").filter({ hasText: /^ttf/ })
+                .getByRole("button", { name: "ダウンロード", exact: true }).click(),
+            "成果物をダウンロードできませんでした。もう一度お試しください。",
+        );
+        const bytes = await downloadBytes(ttf);
         expect(listed?.sha256).toMatch(/^[a-f0-9]{64}$/);
         expect(createHash("sha256").update(bytes).digest("hex")).toBe(
             listed!.sha256,
