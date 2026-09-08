@@ -202,3 +202,43 @@ def test_t12_cross_project(client, project):
     assert all(r.status_code == 404 for r in responses)
     assert len({r.content for r in responses}) == 1
     assert client.get("/api/projects/" + other["project_id"], headers=auth(other)).json() == before
+
+
+def test_t5_trace_bomb_cells(client, app, project, tmp_path):
+    """T5: Hundreds of disconnected components are rejected before native tracing."""
+    import time
+    from io import BytesIO
+
+    from glyphlab.template.layout import cell_box_px
+    from glyphlab.template.sidecar import read_sidecar
+    from PIL import Image, ImageDraw
+    from service_test_support import scan_for_project
+
+    scan = scan_for_project(client, app, project, tmp_path)
+    sidecar = read_sidecar(tmp_path / "template.json")
+    page = sidecar.pages[0]
+    cell = page.cells[0]
+    box = cell_box_px(page, cell.row, cell.col)
+    image = Image.open(BytesIO(scan)).convert("L")
+    draw = ImageDraw.Draw(image)
+    draw.rectangle(box, fill=255)
+    for y in range(box[1] + 3, box[3] - 7, 14):
+        for x in range(box[0] + 3, box[2] - 7, 14):
+            draw.rectangle((x, y, x + 6, y + 6), fill=0)
+    out = BytesIO()
+    image.save(out, format="PNG")
+    started = time.monotonic()
+    response = client.post(
+        "/api/projects/" + project["project_id"] + "/uploads",
+        headers=auth(project),
+        files={"file": ("noise.png", out.getvalue(), "image/png")},
+    )
+    assert response.status_code == 202
+    job = process(app)
+    assert (
+        job.status == "succeeded" and time.monotonic() - started < app.state.settings.job_timeout_s
+    )
+    item = next(
+        c for c in job.payload["result"]["cells"] if c["codepoint"] == f"U+{cell.codepoint:04X}"
+    )
+    assert item["outcome"] == "failed"
