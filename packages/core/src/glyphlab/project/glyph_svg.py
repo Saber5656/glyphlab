@@ -87,6 +87,7 @@ def _parse_path(data: str) -> GlyphOutline:
     index = 0
     contours: list[Contour] = []
     segments: list[CubicSegment] = []
+    total_segments = 0
     current: Point | None = None
     start: Point | None = None
     closed = False
@@ -123,23 +124,26 @@ def _parse_path(data: str) -> GlyphOutline:
         if command == "L":
             endpoint = Point(points[0], -points[1])
             segments.append(CubicSegment(current, current, endpoint, endpoint))
+            total_segments += 1
             current = endpoint
         elif command == "C":
             c1 = Point(points[0], -points[1])
             c2 = Point(points[2], -points[3])
             endpoint = Point(points[4], -points[5])
             segments.append(CubicSegment(current, c1, c2, endpoint))
+            total_segments += 1
             current = endpoint
         else:
             if current != start:
                 segments.append(CubicSegment(current, current, start, start))
+                total_segments += 1
             if not segments:
                 raise _invalid("contour has no drawable segments")
             contours.append(Contour(tuple(segments)))
             if len(contours) > 64:
                 raise _invalid("maximum contour count is 64")
             closed = True
-        if len(segments) > 4000:
+        if total_segments > 4000:
             raise _invalid("maximum segment count is 4000")
         index += 1 + arity
     if not closed:
@@ -154,12 +158,16 @@ def _parse_path(data: str) -> GlyphOutline:
 
 def read_glyph_svg(path: Path) -> tuple[GlyphOutline, int]:
     try:
-        raw = path.read_bytes()
+        with path.open("rb") as handle:
+            raw = handle.read(256 * 1024 + 1)
     except OSError as exc:
         raise _invalid(str(exc)) from exc
     if len(raw) > 256 * 1024:
         raise _invalid("document exceeds 256 KiB")
-    text = raw.decode("utf-8", errors="strict")
+    try:
+        text = raw.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise _invalid(f"UTF-8 decode failed: {exc}") from exc
     upper = text.upper()
     if "<!DOCTYPE" in upper or "<!ENTITY" in upper or "<?" in text:
         raise _invalid("DOCTYPE, entity declarations, and processing instructions are forbidden")
@@ -188,6 +196,8 @@ def read_glyph_svg(path: Path) -> tuple[GlyphOutline, int]:
     if len(children) != 1 or _local(children[0].tag) != "path":
         raise _invalid("svg must contain exactly one path element")
     path_element = children[0]
+    if list(path_element):
+        raise _invalid("path must not contain child elements")
     child_attributes = {_local(key): value for key, value in path_element.attrib.items()}
     if set(child_attributes) - {"d", "fill"} or "d" not in child_attributes:
         raise _invalid("path has unsupported or missing attributes")

@@ -78,3 +78,22 @@ def test_named_malformed_fixtures() -> None:
     for fixture in fixtures:
         with pytest.raises(GlyphSvgInvalidError):
             read_glyph_svg(fixture)
+
+
+def test_rejects_nested_elements_and_invalid_utf8(tmp_path: Path) -> None:
+    nested = tmp_path / "nested.svg"
+    nested.write_text(_svg("<path><script/></path>"))
+    with pytest.raises(GlyphSvgInvalidError):
+        read_glyph_svg(nested)
+    invalid_utf8 = tmp_path / "invalid-utf8.svg"
+    invalid_utf8.write_bytes(b"\xff")
+    with pytest.raises(GlyphSvgInvalidError):
+        read_glyph_svg(invalid_utf8)
+
+
+def test_segment_limit_applies_to_the_whole_path(tmp_path: Path) -> None:
+    path = tmp_path / "too-many-segments.svg"
+    commands = " ".join(["M 0 0", *["L 1 1"] * 4001, "Z"])
+    path.write_text(_svg(f'<path d="{commands}"/>'))
+    with pytest.raises(GlyphSvgInvalidError):
+        read_glyph_svg(path)
