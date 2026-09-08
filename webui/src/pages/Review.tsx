@@ -53,7 +53,11 @@ export default function Review() {
   const [selected, setSelected] = useState<string[]>([]);
   const [focused, setFocused] = useState<string>();
   const [partialError, setPartialError] = useState(false);
-  const query = useQuery({ queryKey: ["glyphs", projectId], queryFn: () => apiFetch<GlyphList>(`/projects/${projectId}/glyphs?limit=300`, { projectId }) });
+  const query = useQuery({
+    queryKey: ["glyphs", projectId],
+    queryFn: () => apiFetch<GlyphList>(`/projects/${projectId}/glyphs?limit=300`, { projectId }),
+    retry: (failureCount, error) => !(error instanceof ApiError && error.status === 429) && failureCount < 1,
+  });
   const review = useMutation({
     mutationFn: (body: ReviewRequest) => apiFetch<components["schemas"]["ReviewResponse"]>(`/projects/${projectId}/glyphs:review`, { method: "POST", body, projectId }),
     onMutate: async payload => {
@@ -107,6 +111,7 @@ export default function Review() {
     </div>
     {query.isPending && <p role="status">{t("loading")}</p>}
     {(query.error || review.error || partialError) && <p role="alert" className="notice error">{errorText((query.error || review.error) instanceof ApiError ? ((query.error || review.error) as ApiError).code : partialError ? "E_VALIDATION" : "E_INTERNAL")}</p>}
+    {query.error && <button disabled={query.isFetching} onClick={() => void query.refetch()}>{t("reloadGlyphs")}</button>}
     {current && !multi && <div className="review-actions" aria-label={t("focusedGlyph")}><span>{current.char} · {current.codepoint}</span><button disabled={current.status === "missing" || review.isPending} aria-label={t("acceptGlyph", { char: current.char })} onClick={() => act([current.codepoint], "accept")}>{t("accepted")}</button><button disabled={current.status === "missing" || review.isPending} aria-label={t("rejectGlyph", { char: current.char })} onClick={() => act([current.codepoint], "reject")}>{t("rejected")}</button></div>}
     {/* v1: at most 276 drawn cells. D2 kanji in v2 requires pagination and virtualization. */}
     <div className="review-grid" ref={grid}>
