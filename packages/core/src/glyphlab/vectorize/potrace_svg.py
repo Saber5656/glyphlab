@@ -1,8 +1,8 @@
 """Parse trusted potrace output separately from the restricted glyph SVG boundary."""
 
 import re
-from xml.etree import ElementTree as ET
 
+from defusedxml import ElementTree as ET
 from fontTools.pens.transformPen import TransformPen
 from fontTools.svgLib.path import parse_path
 
@@ -12,7 +12,7 @@ from .geometry import ContourPen
 
 
 def parse_potrace_svg(data: bytes) -> list[Contour]:
-    root = ET.fromstring(data)  # noqa: S314 -- local potrace process output only
+    root = ET.fromstring(data)
     pen = ContourPen()
     for group in root.iter():
         if group.tag.rsplit("}", 1)[-1] != "g":

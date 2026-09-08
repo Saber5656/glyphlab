@@ -104,3 +104,24 @@ def test_native_page_trace_performance_budget():
     for _ in range(49):
         engine.trace(bitmap, TraceOpts())
     assert perf_counter() - start <= 5
+
+
+def test_native_malformed_svg_maps_to_core_error(monkeypatch):
+    engine = select_engine("potrace")
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, b"<svg", b""),
+    )
+    with pytest.raises(GlyphlabError) as error:
+        engine.trace(np.ones((20, 20), bool), TraceOpts())
+    assert error.value.code == "E_INTERNAL"
+
+
+def test_potrace_parser_rejects_entity_expansion():
+    from defusedxml.common import DefusedXmlException
+    from glyphlab.vectorize.potrace_svg import parse_potrace_svg
+
+    payload = b'<!DOCTYPE svg [<!ENTITY ink "expanded">]><svg>&ink;</svg>'
+    with pytest.raises(DefusedXmlException):
+        parse_potrace_svg(payload)

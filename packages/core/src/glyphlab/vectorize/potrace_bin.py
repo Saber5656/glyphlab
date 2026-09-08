@@ -1,8 +1,10 @@
 import logging
 import subprocess
 from functools import lru_cache
+from xml.etree.ElementTree import ParseError
 
 import numpy as np
+from defusedxml.common import DefusedXmlException
 
 from glyphlab.errors import GlyphlabError
 from glyphlab.model import Contour
@@ -68,5 +70,5 @@ class PotraceBinaryEngine:
             )
         try:
             return parse_potrace_svg(result.stdout)
-        except (ValueError, KeyError) as exc:
+        except (ValueError, KeyError, ParseError, DefusedXmlException) as exc:
             raise GlyphlabError("E_INTERNAL", "Tracing returned malformed SVG") from exc
