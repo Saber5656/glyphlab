@@ -1,0 +1,73 @@
+# Enable GitHub secret scanning and push protection in repository settings.
+name: Security
+on:
+  pull_request:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+      - run: |
+          uv export --locked --all-packages --all-extras --no-emit-workspace --format requirements.txt -o /tmp/requirements.txt
+          ignore_args=()
+          while read -r vuln _; do
+            [[ -z "${vuln:-}" || "$vuln" == \#* ]] && continue
+            ignore_args+=(--ignore-vuln "$vuln")
+          done < security/pip-audit-ignores.txt
+          uvx pip-audit --strict -r /tmp/requirements.txt "${ignore_args[@]}"
+  bandit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+      - run: uvx --from 'bandit[toml]' bandit -c pyproject.toml -r packages/core/src packages/service/src --severity-level medium
+  gitleaks-pr:
+    permissions:
+      contents: read
+      pull-requests: read
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+  gitleaks-full:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+  npm-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        if: hashFiles('webui/package-lock.json') != ''
+        with:
+          node-version: '22'
+      - run: npm audit --omit=dev --audit-level=high
+        if: hashFiles('webui/package-lock.json') != ''
+        working-directory: webui
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48
+        with:
+          deny-licenses: GPL-3.0
+          # potracer is the optional GPL-2 tracing fallback (ADR-004).
+          allow-dependencies-licenses: pkg:pypi/potracer

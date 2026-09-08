@@ -1,0 +1,24 @@
+services:
+  app:
+    image: glyphlab:ci
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - '${GLYPHLAB_PORT:-8080}:8080'
+    volumes:
+      - glyphlab-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+    environment:
+      GLYPHLAB_RETENTION_DAYS: '${GLYPHLAB_RETENTION_DAYS:-14}'
+      GLYPHLAB_MAX_STORE_BYTES: '${GLYPHLAB_MAX_STORE_BYTES:-5368709120}'
+      GLYPHLAB_TRUST_PROXY_HEADERS: 'false'
+volumes:
+  glyphlab-data:
+# Optional PostgreSQL requires GLYPHLAB_DATABASE_URL and the service postgres extra.
+# SQLite with a local volume is the supported single-machine default.

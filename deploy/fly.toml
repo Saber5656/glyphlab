@@ -1,0 +1,36 @@
+app = "glyphlab"
+primary_region = "nrt"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  GLYPHLAB_ENVIRONMENT = "prod"
+  GLYPHLAB_OBJECT_STORE = "local"
+  GLYPHLAB_RETENTION_DAYS = "14"
+  GLYPHLAB_TRUST_PROXY_HEADERS = "true"
+
+[mounts]
+  source = "glyphlab_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  min_machines_running = 1
+  auto_stop_machines = false
+  auto_start_machines = true
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 40
+    hard_limit = 60
+  [[http_service.checks]]
+    interval = "10s"
+    timeout = "3s"
+    grace_period = "5s"
+    method = "GET"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1024mb"
