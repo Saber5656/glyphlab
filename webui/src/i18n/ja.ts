@@ -58,7 +58,7 @@ export const ja = {
         "このリンクを失うとプロジェクトは開けません。ブックマークかメモに保存してください",
     copied: "コピーしました",
     errorFallback: "エラーが発生しました（{code}）",
-    sample: "きょうは「Glyphlab」でフォントを作った。手書きの文字が、そのまま自分のフォントになる。",
+    sample: "きょうは「Glyphlab」でフォントを作った。ローマ字とかなが、ひとつの文で・ながく・つづく！",
     copyLink: "リンクをコピー",
     closeSaved: "保存したので閉じる",
     inputInvalid: "入力内容を確認してください",
@@ -151,6 +151,20 @@ export const ja = {
     privacySelfHost:
         "自分で管理する場合は、保存先と保持期間を運用環境に合わせて設定できます。",
     backTop: "トップに戻る",
+    buildInProgress:
+        "別のフォント生成が進行中です。完了を待って結果を表示します。",
+    nothingToBuild:
+        "採用できる文字がありません。確認画面で文字を採用してから生成してください。",
+    reviewMissing: "文字の確認へ",
+    qaChecks: "失敗したチェック: {checks}",
+    downloadFailed:
+        "成果物をダウンロードできませんでした。もう一度お試しください。",
+    missingGlyphs: "この文字はフォントに含まれません: {chars}",
+    fontLoading: "フォントを読み込み中…",
+    fontLoadFailed:
+        "プレビュー用フォントを読み込めませんでした。ダウンロードは利用できます。",
+    buildHistory: "生成履歴",
+    currentBuild: "現在の生成",
 } as const;
 export type MsgKey = keyof typeof ja;
 export function t(
