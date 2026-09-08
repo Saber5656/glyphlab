@@ -56,6 +56,10 @@ def list_glyphs(
     items = []
     for row in rows:
         cp = f"U+{row.codepoint:04X}"
+        # Review changes updated_at but never the outline. Upload identity changes
+        # only when ingestion replaces geometry; accepted glyphs keep their source.
+        # Legacy rows have no source until their next ingest, so remain stable too.
+        revision = row.source_upload_id or "legacy"
         items.append(
             {
                 "codepoint": cp,
@@ -63,7 +67,11 @@ def list_glyphs(
                 "status": row.status,
                 "advance": row.advance,
                 "warnings": row.warnings,
-                "svg_url": f"/api/projects/{project.id}/glyphs/{cp}.svg" if row.svg_key else None,
+                "svg_url": (
+                    f"/api/projects/{project.id}/glyphs/{cp}.svg?v={revision}"
+                    if row.svg_key
+                    else None
+                ),
                 "updated_at": iso_utc(row.updated_at),
             }
         )
