@@ -53,7 +53,11 @@ export default function Review() {
   const [selected, setSelected] = useState<string[]>([]);
   const [focused, setFocused] = useState<string>();
   const [partialError, setPartialError] = useState(false);
-  const query = useQuery({ queryKey: ["glyphs", projectId], queryFn: () => apiFetch<GlyphList>(`/projects/${projectId}/glyphs?limit=300`, { projectId }) });
+  const query = useQuery({
+    queryKey: ["glyphs", projectId],
+    queryFn: () => apiFetch<GlyphList>(`/projects/${projectId}/glyphs?limit=300`, { projectId }),
+    retry: (failureCount, error) => !(error instanceof ApiError && error.status === 429) && failureCount < 1,
+  });
   const review = useMutation({
     mutationFn: (body: ReviewRequest) => apiFetch<components["schemas"]["ReviewResponse"]>(`/projects/${projectId}/glyphs:review`, { method: "POST", body, projectId }),
     onMutate: async payload => {
