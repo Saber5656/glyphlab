@@ -966,7 +966,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28" },
     { name = "moto", extras = ["s3"], marker = "extra == 'test'", specifier = ">=5" },
     { name = "psutil", marker = "extra == 'test'", specifier = ">=6" },
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.3.5" },
     { name = "pydantic-settings", specifier = ">=2.8" },
     { name = "pypdfium2", marker = "extra == 'test'", specifier = ">=4" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
