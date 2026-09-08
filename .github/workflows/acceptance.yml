@@ -1,0 +1,67 @@
+name: Product acceptance
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 * * 1"
+permissions:
+  contents: read
+concurrency:
+  group: acceptance-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read # Read the latest main full-history gitleaks job's conclusion.
+    env:
+      UV_PYTHON: '3.12'
+      SOURCE_DATE_EPOCH: '1700000000'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          enable-cache: true
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Install native tracing and workspace validation dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends potrace
+          uv sync --locked --all-packages --all-extras
+          npm ci --prefix webui
+          cd webui && npx playwright install --with-deps chromium webkit
+      - name: Execute product acceptance
+        run: bash scripts/acceptance.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: acceptance-${{ github.sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            work/acceptance/**/ACCEPTANCE.md
+            work/acceptance/**/evidence.json
+            work/acceptance/**/FAILURE.txt
+            work/acceptance/**/*.log
+            work/acceptance/**/wheel-result.json
+            work/acceptance/**/retention.json
+            work/acceptance/**/container-memory.json
+            work/acceptance/**/abuse-*.xml
+            work/acceptance/**/dist/*.whl
+            work/acceptance/**/cli/**/*.ttf
+            work/acceptance/**/cli/**/*.woff2
+            work/acceptance/**/cli/**/*.html
+            work/acceptance/**/cli/**/qa.json
+            webui/test-results/
+            webui/playwright-report/
