@@ -911,7 +911,7 @@ requires-dist = [
     { name = "brotli", specifier = ">=1.2" },
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "fontbakery", marker = "extra == 'qa'", specifier = ">=1.1,<1.2" },
-    { name = "fonttools", extras = ["woff"], specifier = ">=4.63" },
+    { name = "fonttools", extras = ["woff"], specifier = ">=4.64.0" },
     { name = "numpy", specifier = ">=2.4.6" },
     { name = "opencv-python-headless", specifier = ">=4.8" },
     { name = "pillow", specifier = ">=12" },
