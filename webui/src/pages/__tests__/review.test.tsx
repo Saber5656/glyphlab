@@ -190,3 +190,21 @@ it("fetches the new geometry revision even when timestamps match", async () => {
   await waitFor(() => expect(screen.getByRole("img", { name: "A" })).toHaveAttribute("src", "blob:second"));
   expect(revisions).toEqual(["upload-1", "upload-2"]);
 });
+
+it("recovers an initial glyph-list rate limit through an explicit reload", async () => {
+  let requests = 0;
+  server.use(http.get("http://localhost/api/projects/p/glyphs", () => {
+    requests++;
+    return requests === 1
+      ? HttpResponse.json({ error: { code: "E_RATE_LIMITED", message: "later" } }, { status: 429, headers: { "Retry-After": "1" } })
+      : HttpResponse.json({ glyphs, next_cursor: null });
+  }));
+  mount();
+  expect(await screen.findByRole("alert")).toHaveTextContent("アクセスが集中しています");
+  expect(screen.queryByRole("button", { name: "A 未確認" })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "文字を再取得" }));
+  expect(await screen.findByRole("button", { name: "A 未確認" })).toBeVisible();
+  expect(requests).toBe(2);
+  expect(screen.queryByRole("button", { name: "文字を再取得" })).not.toBeInTheDocument();
+  expect(calls).toEqual([]);
+});

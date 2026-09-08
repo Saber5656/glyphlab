@@ -107,6 +107,7 @@ export default function Review() {
     </div>
     {query.isPending && <p role="status">{t("loading")}</p>}
     {(query.error || review.error || partialError) && <p role="alert" className="notice error">{errorText((query.error || review.error) instanceof ApiError ? ((query.error || review.error) as ApiError).code : partialError ? "E_VALIDATION" : "E_INTERNAL")}</p>}
+    {query.error && <button disabled={query.isFetching} onClick={() => void query.refetch()}>{t("reloadGlyphs")}</button>}
     {current && !multi && <div className="review-actions" aria-label={t("focusedGlyph")}><span>{current.char} · {current.codepoint}</span><button disabled={current.status === "missing" || review.isPending} aria-label={t("acceptGlyph", { char: current.char })} onClick={() => act([current.codepoint], "accept")}>{t("accepted")}</button><button disabled={current.status === "missing" || review.isPending} aria-label={t("rejectGlyph", { char: current.char })} onClick={() => act([current.codepoint], "reject")}>{t("rejected")}</button></div>}
     {/* v1: at most 276 drawn cells. D2 kanji in v2 requires pagination and virtualization. */}
     <div className="review-grid" ref={grid}>

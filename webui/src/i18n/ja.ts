@@ -101,6 +101,7 @@ export const ja = {
     dropImage: "ここに画像をドロップ",
     chooseImage: "またはタップして選択（最大6ファイル）",
     retry: "再試行",
+    reloadGlyphs: "文字を再取得",
     openReview: "確認画面へ",
     page: "ページ {number}",
     waiting: "待機中",
