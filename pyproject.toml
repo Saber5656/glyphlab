@@ -18,7 +18,7 @@ dev = [
   "glyphlab",
   "glyphlab-service[test]",
   "fontbakery>=1.1,<1.2",
-  "hypothesis>=6.100",
+  "hypothesis>=6.168.0",
   "jsonschema>=4",
   "mypy>=1.14",
   "pre-commit>=4",
