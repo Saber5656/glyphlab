@@ -964,7 +964,7 @@ requires-dist = [
     { name = "glyphlab", editable = "packages/core" },
     { name = "glyphlab", extras = ["qa"], marker = "extra == 'qa'", editable = "packages/core" },
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28" },
-    { name = "moto", extras = ["s3"], marker = "extra == 'test'", specifier = ">=5" },
+    { name = "moto", extras = ["s3"], marker = "extra == 'test'", specifier = ">=5.2.3" },
     { name = "psutil", marker = "extra == 'test'", specifier = ">=6" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.8" },
