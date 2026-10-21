@@ -1,5 +1,5 @@
 # All dependencies and base images are locked; writes at runtime stay in /data and /tmp.
-FROM node:22-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS webui
+FROM node:22.23.4-bookworm-slim@sha256:5991875dfb80938dd8a6ba3fe3e96fd04929e70792762b3319d8caadbbe229bc AS webui
 WORKDIR /webui
 COPY webui/package*.json ./
 RUN npm ci
